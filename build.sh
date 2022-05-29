@@ -46,12 +46,12 @@ function copyAdditionalFiles() (
 		cp "$file" "target/$file"
 	done
 
-	# (
-	# 	cd src
-	# 	for file in stylesheet.css; do
-	# 		cp "$file" "../target/$file"
-	# 	done
-	# )
+	(
+		cd src
+		for file in stylesheet.css; do
+			cp "$file" "../target/$file"
+		done
+	)
 )
 
 function pack() (
