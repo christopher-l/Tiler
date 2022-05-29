@@ -1,15 +1,18 @@
-import { LayoutManager } from 'services/layout-manager';
-import { Settings } from 'services/settings';
+import { LayoutManager } from 'services/LayoutManager';
+import { Settings } from 'services/Settings';
+import { KeyBindings } from 'services/KeyBindings';
 
 class Extension {
     enable() {
         Settings.init();
         LayoutManager.init();
+        KeyBindings.init();
     }
 
     disable() {
         Settings.destroy();
         LayoutManager.destroy();
+        KeyBindings.destroy();
     }
 }
 

@@ -1,6 +1,6 @@
 import { Meta } from 'imports/gi';
-import { Settings } from 'services/settings';
-import { RootLayout } from 'utils/layout';
+import { Settings } from 'services/Settings';
+import { LayoutConfig, RootLayout, Window } from 'utils/layout';
 
 interface Workspace extends Meta.Workspace {
     layouts?: LayoutsMap;
@@ -43,11 +43,28 @@ export class LayoutManager {
             layoutsMap = this._layouts;
         }
         if (global.display.get_primary_monitor() === monitor) {
-            layoutsMap.primary ??= new RootLayout(this._settings.defaultTilingMode.value);
+            layoutsMap.primary ??= new RootLayout(this._getLayoutConfig(monitor));
             return layoutsMap.primary;
         } else {
-            layoutsMap[monitor] ??= new RootLayout(this._settings.defaultTilingMode.value);
+            layoutsMap[monitor] ??= new RootLayout(this._getLayoutConfig(monitor));
             return layoutsMap[monitor] as RootLayout;
         }
+    }
+
+    toggleFloating(window: Window = global.display.focus_window): void {
+        const monitor = window.get_monitor();
+        const workspace = window.is_on_all_workspaces() ? undefined : window.get_workspace();
+        const layout = this.getLayout(monitor, workspace);
+        layout.tileWindow(window);
+    }
+
+    private _getLayoutConfig(monitor: number): LayoutConfig {
+        return {
+            defaultLayout: this._settings.defaultTilingMode.value,
+            gapSize: this._settings.gapSize.value,
+            rootRect: global.workspace_manager
+                .get_active_workspace()
+                .get_work_area_for_monitor(monitor),
+        };
     }
 }

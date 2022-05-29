@@ -1,34 +1,47 @@
 export type TilingType = 'split-h' | 'split-v' | 'stacking';
 import { Meta } from 'imports/gi';
 
-interface Window extends Meta.Window {
+export interface Window extends Meta.Window {
     layout?: Layout;
+}
+
+export interface LayoutConfig {
+    defaultLayout: TilingType;
+    gapSize: number;
+    rootRect: Meta.Rectangle;
 }
 
 type Layout = TilingLayout;
 
 export class RootLayout {
     floating: Window[] = [];
-    tiling: TilingLayout = createTilingLayout(null, this.defaultLayout);
+    tiling: TilingLayout = createTilingLayout(null, this.config.defaultLayout);
 
-    constructor(public defaultLayout: TilingType) {}
+    constructor(public config: LayoutConfig) {
+        this.tiling.updatePositionAndSize(
+            subtractGaps(this.config.rootRect, this.config.gapSize),
+            this.config.gapSize,
+        );
+    }
 
     tileWindow(window: Window): void {
         let layout = this.tiling;
         while (layout.children.length > 0 && layout.children[0].node.kind === 'layout') {
             layout = layout.children[0].node.layout;
         }
-        if (layout.children.length === 0 || layout.type === this.defaultLayout) {
+        if (layout.children.length === 0 || layout.type === this.config.defaultLayout) {
             layout.insertWindow(window);
+            layout.updatePositionAndSize(layout.rect!, this.config.gapSize);
         } else if (layout.children[0]?.node.kind === 'window') {
             const nodeWindow = layout.children[0].node.window;
-            const newLayout = createTilingLayout(layout, this.defaultLayout);
+            const newLayout = createTilingLayout(layout, this.config.defaultLayout);
             newLayout.insertWindow(nodeWindow);
             newLayout.insertWindow(window);
             layout.children[0].node = {
                 kind: 'layout',
                 layout: newLayout,
             };
+            newLayout.updatePositionAndSize(layout.rect!, this.config.gapSize);
         } else {
             throw new Error('unreachable');
         }
@@ -137,4 +150,13 @@ function createRectangle(x: number, y: number, width: number, height: number): M
     rect.width = width;
     rect.height = height;
     return rect;
+}
+
+function subtractGaps(rect: Meta.Rectangle, gapSize: number): Meta.Rectangle {
+    const result = new Meta.Rectangle();
+    result.x = rect.x + gapSize;
+    result.y = rect.y + gapSize;
+    result.width = rect.width - gapSize * 2;
+    result.height = rect.height - gapSize * 2;
+    return result;
 }

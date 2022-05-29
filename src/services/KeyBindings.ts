@@ -1,5 +1,6 @@
-import { Gio, Meta, Shell } from 'imports/gi';
-import { Settings } from 'services/settings';
+import { Meta, Shell } from 'imports/gi';
+import { LayoutManager } from 'services/LayoutManager';
+import { Settings } from 'services/Settings';
 const Main = imports.ui.main;
 
 export class KeyBindings {
@@ -20,6 +21,7 @@ export class KeyBindings {
     }
 
     private readonly _settings = Settings.getInstance();
+    private readonly _layoutManager = LayoutManager.getInstance();
     private _addedKeyBindings: string[] = [];
 
     init() {
@@ -54,6 +56,6 @@ export class KeyBindings {
     }
 
     private _addExtensionKeyBindings() {
-        this.addKeyBinding('toggle-floating', () => this._ws.activatePrevious());
+        this.addKeyBinding('toggle-floating', () => this._layoutManager.toggleFloating());
     }
 }

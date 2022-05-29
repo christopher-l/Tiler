@@ -33,6 +33,8 @@ export namespace St {
 
 export namespace Meta {
     type Window = any;
+    type Rectangle = any;
+    type Workspace = any;
 }
 
 export namespace Gtk {
