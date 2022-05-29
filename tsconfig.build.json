@@ -4,8 +4,8 @@
     "compilerOptions": {
         "noImplicitAny": false,
         "paths": {
-            "types": ["./src/types/dummy/types.d"],
-            "imports/*": ["./src/types/dummy/imports/*"]
+            "types": ["types/dummy/types.d"],
+            "imports/*": ["types/dummy/imports/*"]
         }
     },
     "exclude": ["src/types/generated/*"]

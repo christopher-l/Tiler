@@ -18,6 +18,12 @@
     </schema>
 
     <schema id="org.gnome.shell.extensions.tiler.shortcuts" path="/org/gnome/shell/extensions/tiler/shortcuts/">
+        <key name="focus-floating" type="as">
+            <default><![CDATA[['<Super>Space']]]></default>
+        </key>
+        <key name="toggle-floating" type="as">
+            <default><![CDATA[['<Super><Shift>Space']]]></default>
+        </key>
         <key name="focus-left" type="as">
             <default><![CDATA[['<Super>h']]]></default>
         </key>

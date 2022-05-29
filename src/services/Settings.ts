@@ -1,8 +1,7 @@
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 import { Gio } from 'imports/gi';
-
-export type TilingMode = 'split-h' | 'split-v' | 'stacking';
+import { TilingMode } from 'utils/layout';
 
 export class Settings {
     private static _instance: Settings | null;
