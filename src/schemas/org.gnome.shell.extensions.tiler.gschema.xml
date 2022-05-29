@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+    <schema id="org.gnome.shell.extensions.tiler.appearance" path="/org/gnome/shell/extensions/tiler/appearance/">
+        <key name="gap-size" type="u">
+            <default>4</default>
+        </key>
+    </schema>
+
+    <schema id="org.gnome.shell.extensions.tiler.behavior" path="/org/gnome/shell/extensions/tiler/behavior/">
+        <key name="default-tiling-mode" type="s">
+            <choices>
+                <choice value="split-h"/>
+                <choice value="split-v"/>
+                <choice value="stacking"/>
+            </choices>
+            <default>"stacking"</default>
+        </key>
+    </schema>
+
+    <schema id="org.gnome.shell.extensions.tiler.shortcuts" path="/org/gnome/shell/extensions/tiler/shortcuts/">
+        <key name="focus-left" type="as">
+            <default><![CDATA[['<Super>h']]]></default>
+        </key>
+        <key name="focus-right" type="as">
+            <default><![CDATA[['<Super>l']]]></default>
+        </key>
+        <key name="focus-up" type="as">
+            <default><![CDATA[['<Super>k']]]></default>
+        </key>
+        <key name="focus-down" type="as">
+            <default><![CDATA[['<Super>j']]]></default>
+        </key>
+        <key name="move-left" type="as">
+            <default><![CDATA[['<Super><Shift>h']]]></default>
+        </key>
+        <key name="move-right" type="as">
+            <default><![CDATA[['<Super><Shift>l']]]></default>
+        </key>
+        <key name="move-up" type="as">
+            <default><![CDATA[['<Super><Shift>k']]]></default>
+        </key>
+        <key name="move-down" type="as">
+            <default><![CDATA[['<Super><Shift>j']]]></default>
+        </key>
+    </schema>
+</schemalist>

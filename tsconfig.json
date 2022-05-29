@@ -1,0 +1,15 @@
+{
+    "compilerOptions": {
+        "target": "ES2021",
+        "strict": true,
+        "outDir": "./target",
+        "lib": ["ES2021", "dom"],
+        "paths": {
+            "@imports/*": ["./@types/Gjs/*"],
+            "types": ["./src/types/generated/types.d"],
+            "imports/*": ["./src/types/generated/imports/*"]
+        }
+    },
+    "include": ["src/**/*.ts"],
+    "exclude": ["src/types/dummy/*"]
+}
