@@ -1,7 +1,7 @@
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 import { Gio } from 'imports/gi';
-import { TilingMode } from 'utils/layout';
+import { TilingType } from 'utils/layout';
 
 export class Settings {
     private static _instance: Settings | null;
@@ -16,7 +16,12 @@ export class Settings {
     static getInstance(): Settings {
         return Settings._instance as Settings;
     }
+    readonly mutterSettings = new Gio.Settings({ schema: 'org.gnome.mutter' });
 
+    readonly dynamicWorkspaces = SettingsSubject.createBooleanSubject(
+        this.mutterSettings,
+        'dynamic-workspaces',
+    );
     readonly appearanceSettings = ExtensionUtils.getSettings(
         `${Me.metadata['settings-schema']}.appearance`,
     );
@@ -32,7 +37,7 @@ export class Settings {
         'gap-size',
         'uint',
     );
-    readonly defaultTilingMode = SettingsSubject.createStringSubject<TilingMode>(
+    readonly defaultTilingMode = SettingsSubject.createStringSubject<TilingType>(
         this.behaviorSettings,
         'default-tiling-mode',
     );
