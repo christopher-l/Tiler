@@ -25,6 +25,12 @@ export class RootLayout {
     }
 
     tileWindow(window: Window): void {
+        if (window.get_maximized()) {
+            window.unmaximize(Meta.MaximizeFlags.BOTH);
+        }
+        if (!window.allows_resize()) {
+            return;
+        }
         let layout = this.tiling;
         while (layout.children.length > 0 && layout.children[0].node.kind === 'layout') {
             layout = layout.children[0].node.layout;
@@ -103,8 +109,8 @@ class SplitLayout extends BaseLayout {
             const tileStart = offset;
             const tileEnd =
                 (totalTiledSize - (this.children.length - 1 - index) * gapSize) * sizeAcc;
-            const x = this.type === 'split-h' ? tileStart : rect.x;
-            const y = this.type === 'split-v' ? tileStart : rect.y;
+            const x = this.type === 'split-h' ? tileStart + rect.x : rect.x;
+            const y = this.type === 'split-v' ? tileStart + rect.y : rect.y;
             const width = this.type === 'split-h' ? tileEnd - tileStart : rect.width;
             const height = this.type === 'split-v' ? tileEnd - tileStart : rect.height;
             if (child.node.kind === 'window') {
