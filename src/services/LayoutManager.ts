@@ -1,6 +1,7 @@
 import { Meta } from 'imports/gi';
 import { Settings } from 'services/Settings';
-import { LayoutConfig, RootLayout, Window } from 'utils/layout';
+import { LayoutConfig, RootLayout } from 'modules/layout';
+import { Window } from 'modules/window';
 
 interface Workspace extends Meta.Workspace {
     layouts?: LayoutsMap;
@@ -34,7 +35,14 @@ export class LayoutManager {
 
     destroy() {}
 
-    getLayout(monitor: number, workspace?: Workspace): RootLayout {
+    toggleFloating(window: Window = global.display.get_focus_window()): void {
+        const monitor = window.get_monitor();
+        const workspace = window.is_on_all_workspaces() ? undefined : window.get_workspace();
+        const layout = this._getLayout(monitor, workspace);
+        layout.tileWindow(window);
+    }
+
+    private _getLayout(monitor: number, workspace?: Workspace): RootLayout {
         let layoutsMap: LayoutsMap;
         if (workspace) {
             workspace.layouts ??= {};
@@ -51,16 +59,9 @@ export class LayoutManager {
         }
     }
 
-    toggleFloating(window: Window = global.display.focus_window): void {
-        const monitor = window.get_monitor();
-        const workspace = window.is_on_all_workspaces() ? undefined : window.get_workspace();
-        const layout = this.getLayout(monitor, workspace);
-        layout.tileWindow(window);
-    }
-
     private _getLayoutConfig(monitor: number): LayoutConfig {
         return {
-            defaultLayout: this._settings.defaultTilingMode.value,
+            defaultLayout: this._settings.defaultLayout.value,
             gapSize: this._settings.gapSize.value,
             rootRect: global.workspace_manager
                 .get_active_workspace()

@@ -7,13 +7,20 @@
     </schema>
 
     <schema id="org.gnome.shell.extensions.tiler.behavior" path="/org/gnome/shell/extensions/tiler/behavior/">
-        <key name="default-tiling-mode" type="s">
+        <key name="default-layout" type="s">
             <choices>
                 <choice value="split-h"/>
                 <choice value="split-v"/>
                 <choice value="stacking"/>
             </choices>
             <default>"stacking"</default>
+        </key>
+        <key name="default-window-state" type="s">
+            <choices>
+                <choice value="floating"/>
+                <choice value="tiling"/>
+            </choices>
+            <default>"tiling"</default>
         </key>
     </schema>
 

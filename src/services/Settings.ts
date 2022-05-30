@@ -1,7 +1,7 @@
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 import { Gio } from 'imports/gi';
-import { TilingType } from 'utils/layout';
+import { TilingType } from 'modules/layout';
 
 export class Settings {
     private static _instance: Settings | null;
@@ -37,9 +37,13 @@ export class Settings {
         'gap-size',
         'uint',
     );
-    readonly defaultTilingMode = SettingsSubject.createStringSubject<TilingType>(
+    readonly defaultLayout = SettingsSubject.createStringSubject<TilingType>(
         this.behaviorSettings,
-        'default-tiling-mode',
+        'default-layout',
+    );
+    readonly defaultWindowState = SettingsSubject.createStringSubject<'tiling' | 'floating'>(
+        this.behaviorSettings,
+        'default-window-state',
     );
 
     private init() {
