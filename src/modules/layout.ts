@@ -16,17 +16,21 @@ type WindowNode = { kind: 'window'; window: Window };
 type Node = LayoutNode | WindowNode;
 
 export class RootLayout {
-    floating: Window[] = [];
+    // floating: Window[] = [];
     tiling: TilingLayout = createTilingLayout(this, null, this.config.defaultLayout);
 
     constructor(public config: LayoutConfig) {
         this.tiling.updatePositionAndSize(subtractGaps(this.config.rootRect, this.config.gapSize));
     }
 
+    // TODO: call this
+    destroy() {
+        // TODO: iterate all windows and remove all connections
+    }
+
     insertWindow(window: Window): void {
         window.tilingState = { ...(window.tilingState ?? {}), rootLayout: this };
         const targetState = this._getTargetState(window);
-        console.log('targetState', targetState);
         switch (targetState) {
             case 'floating':
                 this.floatWindow(window);
@@ -38,6 +42,19 @@ export class RootLayout {
                 }
                 break;
         }
+        this._removeWhenClosed(window);
+    }
+
+    private _removeWhenClosed(window: Window): void {
+        window.tilingState!.connections ??= [];
+        const id = window.connect('unmanaged', () => {
+            window.tilingState!.connections!.splice(
+                window.tilingState!.connections!.indexOf(id),
+                1,
+            );
+            this.removeWindow(window);
+        });
+        window.tilingState!.connections.push();
     }
 
     removeWindow(window: Window): void {
@@ -57,10 +74,10 @@ export class RootLayout {
     }
 
     private _removeFloatingWindow(window: Window): void {
-        const index = this.floating.indexOf(window);
-        if (index >= 0) {
-            this.floating.splice(index, 1);
-        }
+        // const index = this.floating.indexOf(window);
+        // if (index >= 0) {
+        //     this.floating.splice(index, 1);
+        // }
     }
 
     private _removeTilingWindow(window: Window): void {
@@ -122,8 +139,11 @@ export class RootLayout {
     }
 
     floatWindow(window: Window): void {
+        if (window.tilingState?.state === 'tiling') {
+            this._removeTilingWindow(window);
+        }
         window.tilingState!.state = 'floating';
-        this.floating.push(window);
+        // this.floating.push(window);
         if (window.tilingState!.restoreRect) {
             const rect = window.tilingState!.restoreRect;
             window.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
@@ -147,7 +167,7 @@ export class RootLayout {
         if (layout.children.length === 0 || layout.type === this.config.defaultLayout) {
             // Add the window to the existing layout.
             layout.insertWindow(window);
-            layout.updatePositionAndSize(layout.rect!);
+            layout.updatePositionAndSize();
         } else if (layout.children[0]?.node.kind === 'window') {
             // Replace the first window of the existing layout with the default layout, holding the
             // existing window and the new one.
@@ -219,11 +239,12 @@ class SplitLayout extends BaseLayout {
         const index = this.children.findIndex(
             ({ node }) => node.kind === 'window' && node.window === window,
         );
-        if (index >= 0) {
-            this.children.splice(index, 1);
-            normalizeSizes(this.children);
-            window.tilingState!.parent = null;
+        if (index < 0) {
+            throw new Error('window not in layout');
         }
+        this.children.splice(index, 1);
+        normalizeSizes(this.children);
+        window.tilingState!.parent = null;
     }
 
     updatePositionAndSize(rect: Meta.Rectangle = this.rect!): void {

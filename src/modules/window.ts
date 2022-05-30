@@ -6,6 +6,7 @@ export type WindowTilingState = {
     state?: WindowState;
     parent?: TilingLayout | null; // Set when state: 'tiling'
     restoreRect?: Meta.Rectangle | null;
+    connections?: number[];
 };
 
 export type TilingWindowState = {};

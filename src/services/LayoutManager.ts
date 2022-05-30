@@ -2,6 +2,7 @@ import { Meta, Shell } from 'imports/gi';
 import { Settings } from 'services/Settings';
 import { LayoutConfig, RootLayout } from 'modules/layout';
 import { Window } from 'modules/window';
+import { DebouncingNotifier } from 'utils/DebouncingNotifier';
 
 interface Workspace extends Meta.Workspace {
     layouts?: LayoutsMap;
@@ -30,17 +31,19 @@ export class LayoutManager {
     private _layouts: LayoutsMap = {};
     private _windowsChanged?: number;
     private _activeWorkspaceChanged?: number;
+    private readonly _updateNotifier = new DebouncingNotifier();
 
     init() {
         LayoutManager._instance = this;
         this._windowsChanged = Shell.WindowTracker.get_default().connect(
             'tracked-windows-changed',
-            () => this._update(),
+            () => this._updateNotifier.notify(),
         );
         this._activeWorkspaceChanged = global.workspace_manager.connect(
             'active-workspace-changed',
-            () => this._update(),
+            () => this._updateNotifier.notify(),
         );
+        this._updateNotifier.subscribe(() => this._update());
         this._update();
     }
 
@@ -51,6 +54,7 @@ export class LayoutManager {
         if (this._activeWorkspaceChanged) {
             global.workspace_manager.disconnect(this._activeWorkspaceChanged);
         }
+        this._updateNotifier.destroy();
     }
 
     toggleFloating(window: Window = global.display.get_focus_window()): void {
