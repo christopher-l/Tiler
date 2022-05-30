@@ -1,14 +1,19 @@
-export type TilingType = 'split-h' | 'split-v' | 'stacking';
 import { Meta } from 'imports/gi';
-import { Window } from 'modules/window';
+import { TilingWindowState, Window } from 'modules/window';
+
+export type WindowState = 'floating' | 'tiling';
+export type TilingType = 'split-h' | 'split-v' | 'stacking';
 
 export interface LayoutConfig {
     defaultLayout: TilingType;
+    defaultWindowState: WindowState;
     gapSize: number;
     rootRect: Meta.Rectangle;
 }
 
-export type Layout = TilingLayout;
+type LayoutNode = { kind: 'layout'; layout: TilingLayout };
+type WindowNode = { kind: 'window'; window: Window };
+type Node = LayoutNode | WindowNode;
 
 export class RootLayout {
     floating: Window[] = [];
@@ -18,13 +23,123 @@ export class RootLayout {
         this.tiling.updatePositionAndSize(subtractGaps(this.config.rootRect, this.config.gapSize));
     }
 
-    tileWindow(window: Window): void {
+    insertWindow(window: Window): void {
+        window.tilingState = { ...(window.tilingState ?? {}), rootLayout: this };
+        const targetState = this._getTargetState(window);
+        console.log('targetState', targetState);
+        switch (targetState) {
+            case 'floating':
+                this.floatWindow(window);
+                break;
+            case 'tiling':
+                const couldTile = this.tileWindow(window);
+                if (!couldTile) {
+                    this.floatWindow(window);
+                }
+                break;
+        }
+    }
+
+    removeWindow(window: Window): void {
+        const parent = window.tilingState!.parent;
+        switch (window.tilingState!.state) {
+            case 'floating':
+                this._removeFloatingWindow(window);
+                break;
+            case 'tiling':
+                this._removeTilingWindow(window);
+                break;
+        }
+        window.tilingState!.rootLayout = null;
+        if (parent) {
+            parent.updatePositionAndSize();
+        }
+    }
+
+    private _removeFloatingWindow(window: Window): void {
+        const index = this.floating.indexOf(window);
+        if (index >= 0) {
+            this.floating.splice(index, 1);
+        }
+    }
+
+    private _removeTilingWindow(window: Window): void {
+        const layout = window.tilingState!.parent!;
+        layout.removeWindow(window);
+        // If there is only one child left in the layout, replace the layout by the child node.
+        if (layout.children.length === 1 && layout.parent) {
+            this._replaceLayout(layout, layout.children[0].node);
+        }
+    }
+
+    private _replaceLayout(layout: TilingLayout, newNode: Node): void {
+        const parent = layout.parent!;
+        const parentIndex = parent.children.findIndex(
+            ({ node }) => node.kind === 'layout' && node.layout === layout,
+        );
+        parent.children[parentIndex].node = newNode;
+        this._setParent(newNode, parent);
+        if (newNode.kind === 'layout' && isSplit(parent)) {
+            this._homogenize(parent);
+        }
+    }
+
+    private _setParent(node: Node, parent: TilingLayout) {
+        switch (node.kind) {
+            case 'layout':
+                node.layout.parent = parent;
+                break;
+            case 'window':
+                node.window.tilingState!.parent = parent;
+                break;
+        }
+    }
+
+    /**
+     * If the given layout has children that are layouts of the same type, incorporates these
+     * children into the layout.
+     */
+    private _homogenize(layout: SplitLayout): void {
+        for (const child of [...layout.children]) {
+            if (child.node.kind === 'layout' && child.node.layout.type === layout.type) {
+                const index = layout.children.indexOf(child);
+                const subChildren = child.node.layout.children;
+                subChildren.forEach((subChild) => {
+                    this._setParent(subChild.node, layout);
+                    subChild.size *= child.size;
+                });
+                layout.children.splice(index, 1, ...subChildren);
+            }
+        }
+    }
+
+    private _getTargetState(window: Window): WindowState {
+        if (window.tilingState?.state) {
+            return window.tilingState.state;
+        } else {
+            return this.config.defaultWindowState;
+        }
+    }
+
+    floatWindow(window: Window): void {
+        window.tilingState!.state = 'floating';
+        this.floating.push(window);
+        if (window.tilingState!.restoreRect) {
+            const rect = window.tilingState!.restoreRect;
+            window.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
+            window.tilingState!.restoreRect = null;
+        }
+    }
+
+    tileWindow(window: Window): boolean {
         if (window.get_maximized()) {
             window.unmaximize(Meta.MaximizeFlags.BOTH);
         }
         if (!window.allows_resize()) {
-            return;
+            return false;
         }
+        window.tilingState!.state = 'tiling';
+        window.tilingState!.restoreRect = window.get_frame_rect();
         let layout = this.tiling;
         while (layout.children.length > 0 && layout.children[0].node.kind === 'layout') {
             layout = layout.children[0].node.layout;
@@ -48,6 +163,7 @@ export class RootLayout {
         } else {
             throw new Error('unreachable');
         }
+        return true;
     }
 }
 
@@ -81,7 +197,7 @@ class SplitLayout extends BaseLayout {
          * The sum of sizes of all children in a layout is always 1.
          */
         size: number;
-        node: { kind: 'layout'; layout: TilingLayout } | { kind: 'window'; window: Window };
+        node: Node;
     }[] = [];
 
     constructor(
@@ -93,18 +209,24 @@ class SplitLayout extends BaseLayout {
     }
 
     insertWindow(window: Window): void {
-        const nChildren = this.children.length;
-        let newSize = 1 / (nChildren + 1);
-        for (const child of this.children) {
-            child.size *= 1 - newSize;
-        }
-        // Remove numeric errors
-        newSize = this.children.reduce((newSize, child) => newSize - child.size, 1);
-        this.children.push({ size: newSize, node: { kind: 'window', window } });
-        window.tilingState = { rootLayout: this.root, state: 'tiling', parent: this };
+        this.children.push({ size: 1 / this.children.length, node: { kind: 'window', window } });
+        normalizeSizes(this.children);
+        window.tilingState!.state = 'tiling';
+        window.tilingState!.parent = this;
     }
 
-    updatePositionAndSize(rect: Meta.Rectangle): void {
+    removeWindow(window: Window): void {
+        const index = this.children.findIndex(
+            ({ node }) => node.kind === 'window' && node.window === window,
+        );
+        if (index >= 0) {
+            this.children.splice(index, 1);
+            normalizeSizes(this.children);
+            window.tilingState!.parent = null;
+        }
+    }
+
+    updatePositionAndSize(rect: Meta.Rectangle = this.rect!): void {
         this.rect = rect;
         let offset = 0;
         let sizeAcc = 0;
@@ -131,9 +253,7 @@ class SplitLayout extends BaseLayout {
 
 class StackingLayout extends BaseLayout {
     type: 'stacking' = 'stacking';
-    children: {
-        node: { kind: 'window'; window: Window };
-    }[] = [];
+    children: { node: WindowNode }[] = [];
 
     constructor(root: RootLayout, parent: BaseLayout['parent']) {
         super(root, parent);
@@ -141,15 +261,28 @@ class StackingLayout extends BaseLayout {
 
     insertWindow(window: Window): void {
         this.children.push({ node: { kind: 'window', window } });
-        window.tilingState = { rootLayout: this.root, state: 'tiling', parent: this };
+        window.tilingState!.state = 'tiling';
+        window.tilingState!.parent = this;
     }
 
-    updatePositionAndSize(rect: Meta.Rectangle): void {
+    removeWindow(window: Window): void {
+        const index = this.children.findIndex(({ node }) => node.window === window);
+        if (index >= 0) {
+            this.children.splice(index, 1);
+            window.tilingState!.parent = null;
+        }
+    }
+
+    updatePositionAndSize(rect: Meta.Rectangle = this.rect!): void {
         this.rect = rect;
         for (const child of this.children) {
             child.node.window.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
         }
     }
+}
+
+function isSplit(layout: TilingLayout): layout is SplitLayout {
+    return layout.type === 'split-h' || layout.type === 'split-v';
 }
 
 function createRectangle(x: number, y: number, width: number, height: number): Meta.Rectangle {
@@ -168,4 +301,9 @@ function subtractGaps(rect: Meta.Rectangle, gapSize: number): Meta.Rectangle {
     result.width = rect.width - gapSize * 2;
     result.height = rect.height - gapSize * 2;
     return result;
+}
+
+function normalizeSizes(children: { size: number }[]): void {
+    const sum = children.reduce((sum, { size }) => sum + size, 0);
+    children.forEach((child) => (child.size /= sum));
 }

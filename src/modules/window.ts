@@ -1,18 +1,19 @@
 import { Meta } from 'imports/gi';
-import { Layout, RootLayout, TilingLayout } from 'modules/layout';
+import { RootLayout, TilingLayout, WindowState } from 'modules/layout';
 
-export type WindowState = {
-    rootLayout: RootLayout;
-} & (
-    | {
-          state: 'tiling';
-          parent: TilingLayout;
-      }
-    | {
-          state: 'floating';
-      }
-);
+export type WindowTilingState = {
+    rootLayout?: RootLayout | null;
+    state?: WindowState;
+    parent?: TilingLayout | null; // Set when state: 'tiling'
+    restoreRect?: Meta.Rectangle | null;
+};
+
+export type TilingWindowState = {};
+
+export type FloatingWindowState = {
+    state: 'floating';
+};
 
 export interface Window extends Meta.Window {
-    tilingState?: WindowState;
+    tilingState?: WindowTilingState | null;
 }

@@ -1,7 +1,7 @@
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 import { Gio } from 'imports/gi';
-import { TilingType } from 'modules/layout';
+import { TilingType, WindowState } from 'modules/layout';
 
 export class Settings {
     private static _instance: Settings | null;
@@ -41,7 +41,7 @@ export class Settings {
         this.behaviorSettings,
         'default-layout',
     );
-    readonly defaultWindowState = SettingsSubject.createStringSubject<'tiling' | 'floating'>(
+    readonly defaultWindowState = SettingsSubject.createStringSubject<WindowState>(
         this.behaviorSettings,
         'default-window-state',
     );
