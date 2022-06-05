@@ -60,6 +60,9 @@ export class WindowTracker {
                 window.connect('workspace-changed', () => updateNotifier.notify()),
                 window.connect('notify::on-all-workspaces', () => updateNotifier.notify()),
                 window.connect('workspace-changed', () => updateNotifier.notify()),
+                window.connect('focus', () =>
+                    window.tilerLayoutState?.rootLayout?.onWindowFocus(window),
+                ),
                 // window.connect('position-changed', () =>
                 //     console.log('position-changed', window.get_id(), window.get_monitor()),
                 // ),
