@@ -70,7 +70,7 @@ export class WindowTracker {
         updateNotifier.subscribe(() => this._layoutManager.updateWindow(window));
         // Initially update the window layout slightly delayed since (some?) windows are being
         // positioned after being created.
-        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
             updateNotifier.notify();
             return GLib.SOURCE_REMOVE;
         });

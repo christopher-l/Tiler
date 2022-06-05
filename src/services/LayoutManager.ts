@@ -1,6 +1,6 @@
 import { Meta, Shell } from 'imports/gi';
 import { Settings } from 'services/Settings';
-import { LayoutConfig, RootLayout } from 'modules/layout';
+import { Direction, LayoutConfig, RootLayout } from 'modules/layout';
 import { Window } from 'types/extended/window';
 import { DebouncingNotifier } from 'utils/DebouncingNotifier';
 
@@ -61,6 +61,20 @@ export class LayoutManager {
             }
         } else if (targetLayout) {
             targetLayout.insertWindow(window);
+        }
+    }
+
+    focusDirection(direction: Direction): void {
+        const focusWindow: Window = global.display.focus_window;
+        if (focusWindow) {
+            focusWindow.tilerLayoutState?.rootLayout?.focusDirection(focusWindow, direction);
+        }        
+    }
+
+    moveFocusedWindow(direction: Direction): void {
+        const focusWindow: Window = global.display.focus_window;
+        if (focusWindow) {
+            focusWindow.tilerLayoutState?.rootLayout?.moveWindow(focusWindow, direction);
         }
     }
 

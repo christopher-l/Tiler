@@ -31,7 +31,7 @@ export class KeyBindings {
 
     destroy() {
         for (const name of this._addedKeyBindings) {
-            this._removeKeybinding(name);
+            Main.wm.removeKeybinding(name);
         }
         this._addedKeyBindings = [];
     }
@@ -57,5 +57,13 @@ export class KeyBindings {
 
     private _addExtensionKeyBindings() {
         this.addKeyBinding('toggle-floating', () => this._layoutManager.toggleFloating());
+        this.addKeyBinding('focus-left', () => this._layoutManager.focusDirection('left'));
+        this.addKeyBinding('focus-right', () => this._layoutManager.focusDirection('right'));
+        this.addKeyBinding('focus-up', () => this._layoutManager.focusDirection('up'));
+        this.addKeyBinding('focus-down', () => this._layoutManager.focusDirection('down'));
+        this.addKeyBinding('move-left', () => this._layoutManager.moveFocusedWindow('left'));
+        this.addKeyBinding('move-right', () => this._layoutManager.moveFocusedWindow('right'));
+        this.addKeyBinding('move-up', () => this._layoutManager.moveFocusedWindow('up'));
+        this.addKeyBinding('move-down', () => this._layoutManager.moveFocusedWindow('down'));
     }
 }
