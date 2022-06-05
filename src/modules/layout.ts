@@ -126,8 +126,28 @@ export class RootLayout {
     }
 
     onWindowFocus(window: Window): void {
-        if (window.tilerLayoutState?.node) {
+        let node: Node | null | undefined = window.tilerLayoutState?.node;
+        while (node) {
+            node.lastFocusTime = global.get_current_time();
+            node = node.parent;
         }
+    }
+
+    private _getMostRecentlyFocusedChild(node: LayoutNode): Node {
+        const children: { node: Node }[] = node.layout.children;
+        return children.reduce((node, child) => {
+            if (node === null) {
+                return child.node;
+            } else if (!child.node.lastFocusTime) {
+                return node;
+            } else if (!node.lastFocusTime) {
+                return child.node;
+            } else if (node.lastFocusTime > child.node.lastFocusTime) {
+                return node;
+            } else {
+                return child.node;
+            }
+        }, null as Node | null) as Node;
     }
 
     /**
@@ -141,21 +161,27 @@ export class RootLayout {
             return this._moveFloatingFocus(window, direction);
         }
         // Tiling
-        let node = window.tilerLayoutState!.node!.parent!;
-        let nodeToFocus = node.layout.getNodeByDirection(window, direction);
+        let node = window.tilerLayoutState!.node!;
+        return this._focusDirection(node, direction);
+    }
+
+    private _focusDirection(node: Node, direction: Direction): boolean {
+        let nodeToFocus = node.parent!.layout.getChildByDirection(node, direction);
         if (nodeToFocus) {
-            if (nodeToFocus.kind === 'window') {
-                nodeToFocus.window.focus(global.get_current_time());
-                nodeToFocus.window.raise();
-                node.layout.updatePositionAndSize();
-            } else {
-                // kind: 'layout'
-                // TODO
-            }
+            this._focus(nodeToFocus);
             return true;
         }
         // TODO
         return false;
+    }
+
+    private _focus(node: Node): void {
+        if (node.kind === 'window') {
+            node.window.focus(global.get_current_time());
+            node.window.raise();
+        } else {
+            this._focus(this._getMostRecentlyFocusedChild(node));
+        }
     }
 
     /**
@@ -168,10 +194,10 @@ export class RootLayout {
         if (window.tilerLayoutState!.state !== 'tiling') {
             return false;
         }
-        let node = window.tilerLayoutState!.node!.parent!;
-        const couldMoveWithinLayout = node.layout.moveWindow(window, direction);
+        let node = window.tilerLayoutState!.node!;
+        const couldMoveWithinLayout = node.parent!.layout.moveChild(node, direction);
         if (couldMoveWithinLayout) {
-            node.layout.updatePositionAndSize();
+            node.parent!.layout.updatePositionAndSize();
             return true;
         }
         // TODO
@@ -254,12 +280,12 @@ abstract class BaseLayout {
 
     constructor(public root: RootLayout) {}
 
-    getNodeByDirection(window: Window, direction: Direction): Node | null {
+    getChildByDirection(node: Node, direction: Direction): Node | null {
         const indexDiff = this._getIndexDiff(direction);
         if (indexDiff === null) {
             return null;
         }
-        const index = this._getWindowIndex(window);
+        const index = this._getChildIndex(node);
         const newIndex = index + indexDiff;
         if (newIndex < 0 || newIndex >= this.children.length) {
             return null;
@@ -267,27 +293,25 @@ abstract class BaseLayout {
         return this.children[newIndex].node;
     }
 
-    moveWindow(window: Window, direction: Direction): boolean {
+    moveChild(node: Node, direction: Direction): boolean {
         const indexDiff = this._getIndexDiff(direction);
         if (indexDiff === null) {
             return false;
         }
-        const index = this._getWindowIndex(window);
+        const index = this._getChildIndex(node);
         const newIndex = index + indexDiff;
         if (newIndex < 0 || newIndex >= this.children.length) {
             return false;
         }
-        const [node] = this.children.splice(index, 1);
-        this.children.splice(newIndex, 0, node);
+        const [child] = this.children.splice(index, 1);
+        this.children.splice(newIndex, 0, child);
         return true;
     }
 
-    protected _getWindowIndex(window: Window): number {
-        const index = this.children.findIndex(
-            ({ node }) => node.kind === 'window' && node.window === window,
-        );
+    protected _getChildIndex(node: Node): number {
+        const index = this.children.findIndex((child) => child.node === node);
         if (index < 0) {
-            throw new Error('window not in layout');
+            throw new Error('node not in layout');
         } else {
             return index;
         }
@@ -323,7 +347,7 @@ class SplitLayout extends BaseLayout {
     }
 
     removeWindow(window: Window): void {
-        const index = this._getWindowIndex(window);
+        const index = this._getChildIndex(window.tilerLayoutState!.node!);
         this.children.splice(index, 1);
         normalizeSizes(this.children);
         window.tilerLayoutState!.node = null;
@@ -387,7 +411,7 @@ class StackingLayout extends BaseLayout {
     }
 
     removeWindow(window: Window): void {
-        const index = this._getWindowIndex(window);
+        const index = this._getChildIndex(window.tilerLayoutState!.node!);
         this.children.splice(index, 1);
         window.tilerLayoutState!.node = null;
     }
