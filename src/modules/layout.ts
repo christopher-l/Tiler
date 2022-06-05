@@ -20,7 +20,7 @@ export type LayoutNode<T extends TilingLayout = TilingLayout> = {
     kind: 'layout';
     layout: T;
 } & BaseNode;
-export type WindowNode = { kind: 'window'; window: Window } & BaseNode;
+export type WindowNode = { kind: 'window'; window: Window } & BaseNode & { parent: LayoutNode };
 type Node = LayoutNode | WindowNode;
 
 export class RootLayout {
@@ -96,9 +96,28 @@ export class RootLayout {
         }
         window.tilerLayoutState!.state = 'tiling';
         window.tilerLayoutState!.restoreRect = window.get_frame_rect();
-        let node = this.tiling;
+        this._insertWindowIntoLayout(window, this.tiling);
+        return true;
+    }
+
+    private _insertWindowIntoNode(window: Window, node: Node): void {
+        switch (node.kind) {
+            case 'layout':
+                this._insertWindowIntoLayout(window, node);
+                break;
+            case 'window':
+                this._insertWindowIntoNode(window, node);
+                break;
+        }
+    }
+
+    private _insertWindowIntoLayout(window: Window, node: LayoutNode): void {
         // TODO: insert at current focus position
-        while (node.layout.children.length > 0 && node.layout.children[0].node.kind === 'layout') {
+        while (
+            node.kind === 'layout' &&
+            node.layout.children.length > 0 &&
+            node.layout.children[0].node.kind === 'layout'
+        ) {
             node = node.layout.children[0].node;
         }
         if (node.layout.children.length === 0 || node.layout.type === this.config.defaultLayout) {
@@ -106,23 +125,29 @@ export class RootLayout {
             node.layout.insertWindow(window, node);
             node.layout.updatePositionAndSize();
         } else if (node.layout.children[0]?.node.kind === 'window') {
-            // Replace the first window of the existing layout with the default layout, holding the
-            // existing window and the new one.
-            const nodeWindow = node.layout.children[0].node.window;
-            const newLayout = createTilingLayout(this, this.config.defaultLayout);
-            const newNode: LayoutNode = {
-                parent: node,
-                kind: 'layout',
-                layout: newLayout,
-            };
-            newLayout.insertWindow(nodeWindow, newNode);
-            newLayout.insertWindow(window, newNode);
-            node.layout.children[0].node = newNode;
-            newLayout.updatePositionAndSize(nodeWindow.get_frame_rect());
+            this._insertWindowIntoWindowNode(window, node.layout.children[0].node);
         } else {
             throw new Error('unreachable');
         }
-        return true;
+    }
+
+    /**
+     * Replaces the first window of the existing layout with the default layout, holding the
+     * existing window and the new one.
+     */
+    private _insertWindowIntoWindowNode(window: Window, node: WindowNode): void {
+        const nodeWindow = node.window;
+        const newLayout = createTilingLayout(this, this.config.defaultLayout);
+        const parent = node.parent!;
+        const newNode: LayoutNode = {
+            parent,
+            kind: 'layout',
+            layout: newLayout,
+        };
+        newLayout.insertWindow(nodeWindow, newNode);
+        newLayout.insertWindow(window, newNode);
+        parent.layout.children[0].node = newNode;
+        newLayout.updatePositionAndSize(nodeWindow.get_frame_rect());
     }
 
     onWindowFocus(window: Window): void {
@@ -194,13 +219,23 @@ export class RootLayout {
         if (window.tilerLayoutState!.state !== 'tiling') {
             return false;
         }
-        let node = window.tilerLayoutState!.node!;
-        const couldMoveWithinLayout = node.parent!.layout.moveChild(node, direction);
+        const windowNode = window.tilerLayoutState!.node!;
+        const couldMoveWithinLayout = windowNode.parent.layout.moveChild(windowNode, direction);
         if (couldMoveWithinLayout) {
-            node.parent!.layout.updatePositionAndSize();
+            windowNode.parent.layout.updatePositionAndSize();
             return true;
         }
-        // TODO
+        let node = windowNode.parent;
+        while (node.parent) {
+            const child = node.parent.layout.getChildByDirection(node, direction);
+            if (child) {
+                node.parent.layout.removeWindow(window);
+                this._insertWindowIntoNode(window, child);
+                return true;
+            }
+            // TODO
+            node = node.parent
+        }
         return false;
     }
 
