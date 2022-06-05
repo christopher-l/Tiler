@@ -1,5 +1,5 @@
 import { Clutter, Meta } from 'imports/gi';
-import { TilingWindowState, Window } from 'modules/window';
+import { TilingWindowState, Window } from 'types/extended/window';
 
 export type WindowState = 'floating' | 'tiling';
 export type TilingType = 'split-h' | 'split-v' | 'stacking';
@@ -25,11 +25,10 @@ export class RootLayout {
 
     // TODO: call this
     destroy() {
-        // TODO: iterate all windows and remove all connections
     }
 
     insertWindow(window: Window): void {
-        window.tilingState = { ...(window.tilingState ?? {}), rootLayout: this };
+        window.tilerLayoutState = { ...(window.tilerLayoutState ?? {}), rootLayout: this };
         const targetState = this._getTargetState(window);
         switch (targetState) {
             case 'floating':
@@ -42,24 +41,11 @@ export class RootLayout {
                 }
                 break;
         }
-        this._removeWhenClosed(window);
-    }
-
-    private _removeWhenClosed(window: Window): void {
-        window.tilingState!.connections ??= [];
-        const id = window.connect('unmanaged', () => {
-            window.tilingState!.connections!.splice(
-                window.tilingState!.connections!.indexOf(id),
-                1,
-            );
-            this.removeWindow(window);
-        });
-        window.tilingState!.connections.push();
     }
 
     removeWindow(window: Window): void {
-        const parent = window.tilingState!.parent;
-        switch (window.tilingState!.state) {
+        const parent = window.tilerLayoutState!.parent;
+        switch (window.tilerLayoutState!.state) {
             case 'floating':
                 this._removeFloatingWindow(window);
                 break;
@@ -67,7 +53,7 @@ export class RootLayout {
                 this._removeTilingWindow(window);
                 break;
         }
-        window.tilingState!.rootLayout = null;
+        window.tilerLayoutState!.rootLayout = null;
         if (parent) {
             parent.updatePositionAndSize();
         }
@@ -81,7 +67,7 @@ export class RootLayout {
     }
 
     private _removeTilingWindow(window: Window): void {
-        const layout = window.tilingState!.parent!;
+        const layout = window.tilerLayoutState!.parent!;
         layout.removeWindow(window);
         // If there is only one child left in the layout, replace the layout by the child node.
         if (layout.children.length === 1 && layout.parent) {
@@ -107,7 +93,7 @@ export class RootLayout {
                 node.layout.parent = parent;
                 break;
             case 'window':
-                node.window.tilingState!.parent = parent;
+                node.window.tilerLayoutState!.parent = parent;
                 break;
         }
     }
@@ -131,23 +117,23 @@ export class RootLayout {
     }
 
     private _getTargetState(window: Window): WindowState {
-        if (window.tilingState?.state) {
-            return window.tilingState.state;
+        if (window.tilerLayoutState?.state) {
+            return window.tilerLayoutState.state;
         } else {
             return this.config.defaultWindowState;
         }
     }
 
     floatWindow(window: Window): void {
-        if (window.tilingState?.state === 'tiling') {
+        if (window.tilerLayoutState?.state === 'tiling') {
             this._removeTilingWindow(window);
         }
-        window.tilingState!.state = 'floating';
+        window.tilerLayoutState!.state = 'floating';
         // this.floating.push(window);
-        if (window.tilingState!.restoreRect) {
-            const rect = window.tilingState!.restoreRect;
+        if (window.tilerLayoutState!.restoreRect) {
+            const rect = window.tilerLayoutState!.restoreRect;
             window.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
-            window.tilingState!.restoreRect = null;
+            window.tilerLayoutState!.restoreRect = null;
         }
     }
 
@@ -160,9 +146,10 @@ export class RootLayout {
         if (!window.allows_resize()) {
             return false;
         }
-        window.tilingState!.state = 'tiling';
-        window.tilingState!.restoreRect = window.get_frame_rect();
+        window.tilerLayoutState!.state = 'tiling';
+        window.tilerLayoutState!.restoreRect = window.get_frame_rect();
         let layout = this.tiling;
+        // TODO: insert at current focus position
         while (layout.children.length > 0 && layout.children[0].node.kind === 'layout') {
             layout = layout.children[0].node.layout;
         }
@@ -236,8 +223,8 @@ class SplitLayout extends BaseLayout {
             node: { kind: 'window', window },
         });
         normalizeSizes(this.children);
-        window.tilingState!.state = 'tiling';
-        window.tilingState!.parent = this;
+        window.tilerLayoutState!.state = 'tiling';
+        window.tilerLayoutState!.parent = this;
     }
 
     removeWindow(window: Window): void {
@@ -249,7 +236,7 @@ class SplitLayout extends BaseLayout {
         }
         this.children.splice(index, 1);
         normalizeSizes(this.children);
-        window.tilingState!.parent = null;
+        window.tilerLayoutState!.parent = null;
     }
 
     updatePositionAndSize(rect: Meta.Rectangle = this.rect!): void {
@@ -287,15 +274,15 @@ class StackingLayout extends BaseLayout {
 
     insertWindow(window: Window): void {
         this.children.push({ node: { kind: 'window', window } });
-        window.tilingState!.state = 'tiling';
-        window.tilingState!.parent = this;
+        window.tilerLayoutState!.state = 'tiling';
+        window.tilerLayoutState!.parent = this;
     }
 
     removeWindow(window: Window): void {
         const index = this.children.findIndex(({ node }) => node.window === window);
         if (index >= 0) {
             this.children.splice(index, 1);
-            window.tilingState!.parent = null;
+            window.tilerLayoutState!.parent = null;
         }
     }
 

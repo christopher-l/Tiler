@@ -1,7 +1,7 @@
 import { Meta, Shell } from 'imports/gi';
 import { Settings } from 'services/Settings';
 import { LayoutConfig, RootLayout } from 'modules/layout';
-import { Window } from 'modules/window';
+import { Window } from 'types/extended/window';
 import { DebouncingNotifier } from 'utils/DebouncingNotifier';
 
 interface Workspace extends Meta.Workspace {
@@ -29,37 +29,19 @@ export class LayoutManager {
 
     private readonly _settings = Settings.getInstance();
     private _layouts: LayoutsMap = {};
-    private _windowsChanged?: number;
-    private _activeWorkspaceChanged?: number;
-    private readonly _updateNotifier = new DebouncingNotifier();
+    // private readonly _updateNotifier = new DebouncingNotifier();
 
     init() {
         LayoutManager._instance = this;
-        this._windowsChanged = Shell.WindowTracker.get_default().connect(
-            'tracked-windows-changed',
-            () => this._updateNotifier.notify(),
-        );
-        this._activeWorkspaceChanged = global.workspace_manager.connect(
-            'active-workspace-changed',
-            () => this._updateNotifier.notify(),
-        );
-        this._updateNotifier.subscribe(() => this._update());
-        this._update();
     }
 
     destroy() {
-        if (this._windowsChanged) {
-            Shell.WindowTracker.get_default().disconnect(this._windowsChanged);
-        }
-        if (this._activeWorkspaceChanged) {
-            global.workspace_manager.disconnect(this._activeWorkspaceChanged);
-        }
-        this._updateNotifier.destroy();
+        // this._updateNotifier.destroy();
     }
 
     toggleFloating(window: Window = global.display.get_focus_window()): void {
-        const currentState = window.tilingState!.state;
-        const rootLayout = window.tilingState!.rootLayout!;
+        const currentState = window.tilerLayoutState!.state;
+        const rootLayout = window.tilerLayoutState!.rootLayout!;
         switch (currentState) {
             case 'floating':
                 rootLayout.tileWindow(window);
@@ -70,31 +52,27 @@ export class LayoutManager {
         }
     }
 
-    private _update(): void {
-        const windows = global.workspace_manager.get_active_workspace().list_windows();
-        for (const window of windows) {
-            this._updateWindow(window);
-        }
-    }
-
-    private _updateWindow(window: Window): void {
+    updateWindow(window: Window): void {
         const targetLayout = this._getLayoutForWindow(window);
-        if (window.tilingState?.rootLayout) {
-            if (window.tilingState.rootLayout !== targetLayout) {
-                window.tilingState.rootLayout.removeWindow(window);
-                targetLayout.insertWindow(window);
+        if (window.tilerLayoutState?.rootLayout) {
+            if (window.tilerLayoutState.rootLayout !== targetLayout) {
+                window.tilerLayoutState.rootLayout.removeWindow(window);
+                targetLayout?.insertWindow(window);
             }
-        } else {
+        } else if (targetLayout) {
             targetLayout.insertWindow(window);
         }
     }
 
-    private _getLayoutForWindow(window: Window): RootLayout {
+    private _getLayoutForWindow(window: Window): RootLayout | null {
         let layoutsMap: LayoutsMap;
         if (window.is_on_all_workspaces()) {
             layoutsMap = this._layouts;
         } else {
             const workspace: Workspace = window.get_workspace();
+            if (!workspace) {
+                return null;
+            }
             workspace.layouts ??= {};
             layoutsMap = workspace.layouts;
         }
