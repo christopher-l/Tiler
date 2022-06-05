@@ -1,4 +1,4 @@
-import { Meta } from 'imports/gi';
+import { Clutter, Meta } from 'imports/gi';
 import { TilingWindowState, Window } from 'modules/window';
 
 export type WindowState = 'floating' | 'tiling';
@@ -155,6 +155,8 @@ export class RootLayout {
         if (window.get_maximized()) {
             window.unmaximize(Meta.MaximizeFlags.BOTH);
         }
+        // let windowActor = window.get_compositor_private();
+        // (windowActor as Clutter.Actor).remove_all_transitions();
         if (!window.allows_resize()) {
             return false;
         }
@@ -229,7 +231,10 @@ class SplitLayout extends BaseLayout {
     }
 
     insertWindow(window: Window): void {
-        this.children.push({ size: 1 / this.children.length, node: { kind: 'window', window } });
+        this.children.push({
+            size: 1 / (this.children.length || 1),
+            node: { kind: 'window', window },
+        });
         normalizeSizes(this.children);
         window.tilingState!.state = 'tiling';
         window.tilingState!.parent = this;
