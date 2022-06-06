@@ -14,11 +14,14 @@ export class LayoutNode<T extends TilingLayout = TilingLayout> extends BaseNode 
         super();
     }
 
-    print(level = 0): void {
+    debug(level = 0): void {
         const indent = ' '.repeat(level * 2);
         console.log(indent + `Node ${this.kind} ${this.layout.type}:`);
         this.layout.children.forEach((child) => {
-            child.node.print(level + 1);
+            child.node.debug(level + 1);
+            if (child.node.parent !== this) {
+                console.log(indent + `  ** PARENT DOES NOT MATCH **`)
+            }
             // console.log(indent + `  (${(child as any).size})`);
         });
     }
@@ -59,7 +62,7 @@ export class WindowNode extends BaseNode {
         super();
     }
 
-    print(level = 0): void {
+    debug(level = 0): void {
         const indent = ' '.repeat(level * 2);
         console.log(indent + `Node ${this.kind} ${this.window.get_id()}`);
     }

@@ -162,14 +162,17 @@ export class RootLayout {
         const parent = windowNode.parent;
         const child = windowNode.parent.layout.getChildByDirection(windowNode, direction);
         if (child && parent.layout.type !== this.config.defaultLayout) {
+            console.log('merge with child');
             this._removeTilingWindow(window);
             child.insertWindow(window, this.config.defaultLayout);
-            this.tiling.print();
+            this._removeSingleChildLayout(parent);
+            this.tiling.debug();
             windowNode.parent.layout.updatePositionAndSize();
             return true;
         }
         const couldMoveWithinLayout = windowNode.parent.layout.moveChild(windowNode, direction);
         if (couldMoveWithinLayout) {
+            console.log('move within layout');
             windowNode.parent.layout.updatePositionAndSize();
             return true;
         }
@@ -177,6 +180,7 @@ export class RootLayout {
         let node: LayoutNode | null = parent;
         while (node) {
             if (node.layout.type !== layoutType) {
+                console.log('split move');
                 this._splitMove(windowNode, node, layoutType, direction);
                 return true;
             }
@@ -192,18 +196,25 @@ export class RootLayout {
         layoutType: 'split-h' | 'split-v',
         direction: Direction,
     ) {
+        // remove window from tree
         windowNode.parent.layout.removeWindow(windowNode.window);
         const rect = parent.layout.rect;
+        // create new split layout (to replace parent.layout with)
         const newLayout = new SplitLayout(layoutType);
+        // create new node to hold original parent layout
         const newNode = new LayoutNode(parent, parent.layout);
+        // attach newNode to newLayout
         parent.layout.children.forEach((child) => (child.node.parent = newNode));
         newLayout.insertNode(newNode);
+        // attach newLayout to parent
         parent.layout = newLayout;
+        // attach window to newLayout
         parent.layout.insertAtDirection(windowNode, direction);
         windowNode.parent = parent;
+        // cleanup
         this._removeSingleChildLayout(newNode);
         parent.layout.updatePositionAndSize(rect, this.config.gapSize);
-        this.tiling.print();
+        this.tiling.debug();
     }
 
     private _moveFloatingFocus(window: Window, direction: Direction): boolean {
@@ -232,6 +243,7 @@ export class RootLayout {
                 const rect = node.layout.rect;
                 node.layout = node.layout.children[0].node.layout;
                 node.layout.rect = rect;
+                node.layout.children.forEach((child) => (child.node.parent = node));
             } else if (node.parent) {
                 this._replaceLayout(node, node.layout.children[0].node);
             }
