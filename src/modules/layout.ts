@@ -155,7 +155,9 @@ export class RootLayout {
      * layout.
      */
     moveWindow(window: Window, direction: Direction): boolean {
-        console.log('moveWindow ------');
+        console.log('-----------------');
+        console.log('--- moveWindow');
+        console.log('-----------------');
         this.tiling.debug();
         console.log('-----------------');
         if (window.tilerLayoutState!.state !== 'tiling') {
@@ -172,13 +174,13 @@ export class RootLayout {
             direction,
         );
         if (couldInsertIntoSibling) {
-            console.log('insert into sibling');
             return true;
         }
         const couldMoveWithinLayout = windowNode.parent.layout.moveChild(windowNode, direction);
         if (couldMoveWithinLayout) {
             console.log('move within layout');
             windowNode.parent.layout.updatePositionAndSize();
+            this.tiling.debug();
             return true;
         }
         const layoutType = ['up', 'down'].includes(direction) ? 'split-v' : 'split-h';
@@ -208,8 +210,7 @@ export class RootLayout {
     ): boolean {
         console.log('try _insertIntoChildByDirection');
         const child = node.parent?.layout.getChildByDirection(node, direction);
-        console.log('child', !!child);
-        child?.debug();
+        // TODO: Also insert into other layouts
         if (child && node.parent!.layout.type !== this.config.defaultLayout) {
             console.log('do _insertIntoChildByDirection', windowNode.window.get_id(), direction);
             this._removeTilingWindow(windowNode.window);
@@ -231,7 +232,8 @@ export class RootLayout {
         direction: Direction,
     ) {
         // remove window from tree
-        windowNode.parent.layout.removeWindow(windowNode.window);
+        const windowParent = windowNode.parent;
+        windowParent.layout.removeWindow(windowNode.window);
         const rect = parent.layout.rect!;
         // create new split layout (to replace parent.layout with)
         const newLayout = new SplitLayout(layoutType);
@@ -247,10 +249,9 @@ export class RootLayout {
         windowNode.parent = parent;
         // cleanup
         this._removeSingleChildLayout(newNode);
-        console.log('---parent')
-        parent.debug();
+        this._removeSingleChildLayout(windowParent);
         if (parent.parent && isSplitNode(parent.parent)) {
-            this._homogenize(parent.parent)
+            this._homogenize(parent.parent);
             parent.parent.layout.updatePositionAndSize();
         } else {
             parent.layout.updatePositionAndSize(rect, this.config.gapSize);
