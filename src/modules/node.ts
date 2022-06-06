@@ -39,7 +39,7 @@ export class LayoutNode<T extends TilingLayout = TilingLayout> extends BaseNode 
         const node = new WindowNode(this, window);
         this.layout.insertWindowNode(node);
         window.tilerLayoutState!.node = node;
-        window.tilerLayoutState!.state = 'tiling';
+        // window.tilerLayoutState!.state = 'tiling';
     }
 }
 

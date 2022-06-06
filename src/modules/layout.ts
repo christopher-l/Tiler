@@ -157,6 +157,12 @@ export class RootLayout {
             return false;
         }
         const windowNode = window.tilerLayoutState!.node!;
+        const child = windowNode.parent.layout.getChildByDirection(windowNode, direction);
+        if (child) {
+            windowNode.parent.layout.removeWindow(window);
+            child.insertWindow(window, this.config.defaultLayout);
+            return true;
+        }
         const couldMoveWithinLayout = windowNode.parent.layout.moveChild(windowNode, direction);
         if (couldMoveWithinLayout) {
             windowNode.parent.layout.updatePositionAndSize();
@@ -164,13 +170,12 @@ export class RootLayout {
         }
         let node = windowNode.parent;
         while (node.parent) {
-            const child = node.parent.layout.getChildByDirection(node, direction);
-            if (child) {
-                node.parent.layout.removeWindow(window);
-                child.insertWindow(window, this.config.defaultLayout);
-                return true;
-            }
             // TODO
+            if (node.parent.layout.canInsertAtDirection(direction)) {
+                windowNode.parent.layout.removeWindow(window);
+                node.parent.layout.insertAtDirection(windowNode, direction);
+                windowNode.parent = node.parent;
+            }
             node = node.parent;
         }
         return false;
@@ -191,6 +196,7 @@ export class RootLayout {
     private _removeTilingWindow(window: Window): void {
         const parent = window.tilerLayoutState!.node!.parent!;
         parent.layout.removeWindow(window);
+        window.tilerLayoutState!.node = null;
         // If there is only one child left in the layout, replace the layout by the child node.
         if (parent.layout.children.length === 1 && parent.parent) {
             this._replaceLayout(parent, parent.layout.children[0].node);
@@ -279,6 +285,23 @@ abstract class BaseLayout {
         return true;
     }
 
+    canInsertAtDirection(direction: Direction): boolean {
+        return this._getIndexDiff(direction) !== null;
+    }
+
+    insertAtDirection(node: WindowNode, direction: Direction): void {
+        switch (this._getIndexDiff(direction)) {
+            case -1:
+                this.insertWindowNode(node, 0);
+            case 1:
+                this.insertWindowNode(node);
+            default:
+                throw new Error('Could not insert in direction: ' + direction);
+        }
+    }
+
+    abstract insertWindowNode(node: WindowNode, position?: number): void;
+
     protected _getChildIndex(node: Node): number {
         const index = this.children.findIndex((child) => child.node === node);
         if (index < 0) {
@@ -306,8 +329,8 @@ class SplitLayout extends BaseLayout {
         super();
     }
 
-    insertWindowNode(node: WindowNode): void {
-        this.children.push({
+    insertWindowNode(node: WindowNode, position = this.children.length): void {
+        this.children.splice(position, 0, {
             size: 1 / (this.children.length || 1),
             node,
         });
@@ -318,7 +341,6 @@ class SplitLayout extends BaseLayout {
         const index = this._getChildIndex(window.tilerLayoutState!.node!);
         this.children.splice(index, 1);
         normalizeSizes(this.children);
-        window.tilerLayoutState!.node = null;
     }
 
     updatePositionAndSize(
@@ -373,14 +395,13 @@ class StackingLayout extends BaseLayout {
     type: 'stacking' = 'stacking';
     children: { node: WindowNode }[] = [];
 
-    insertWindowNode(node: WindowNode): void {
-        this.children.push({ node });
+    insertWindowNode(node: WindowNode, position = this.children.length): void {
+        this.children.splice(position, 0, { node });
     }
 
     removeWindow(window: Window): void {
         const index = this._getChildIndex(window.tilerLayoutState!.node!);
         this.children.splice(index, 1);
-        window.tilerLayoutState!.node = null;
     }
 
     updatePositionAndSize(rect: Meta.Rectangle = this.rect!): void {
