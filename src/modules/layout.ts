@@ -232,7 +232,7 @@ export class RootLayout {
     ) {
         // remove window from tree
         windowNode.parent.layout.removeWindow(windowNode.window);
-        const rect = parent.layout.rect;
+        const rect = parent.layout.rect!;
         // create new split layout (to replace parent.layout with)
         const newLayout = new SplitLayout(layoutType);
         // create new node to hold original parent layout
@@ -247,7 +247,14 @@ export class RootLayout {
         windowNode.parent = parent;
         // cleanup
         this._removeSingleChildLayout(newNode);
-        parent.layout.updatePositionAndSize(rect, this.config.gapSize);
+        console.log('---parent')
+        parent.debug();
+        if (parent.parent && isSplitNode(parent.parent)) {
+            this._homogenize(parent.parent)
+            parent.parent.layout.updatePositionAndSize();
+        } else {
+            parent.layout.updatePositionAndSize(rect, this.config.gapSize);
+        }
         this.tiling.debug();
     }
 
