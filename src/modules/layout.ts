@@ -166,22 +166,13 @@ export class RootLayout {
         if (this._isRoot(parent) && parent.layout.children.length <= 1) {
             return false;
         }
-        const child = windowNode.parent.layout.getChildByDirection(windowNode, direction);
-        if (child && parent.layout.type !== this.config.defaultLayout) {
-            console.log('merge with child');
-            console.log('--- child before remove');
-            child.debug();
-            console.log('--- tree before remove');
-            this.tiling.debug();
-            this._removeTilingWindow(window);
-            console.log('--- child after remove');
-            child.debug();
-            console.log('--- tree after remove');
-            this.tiling.debug();
-            child.insertWindow(window, this.config.defaultLayout);
-            this.tiling.debug();
-            // this._removeSingleChildLayout(parent);
-            windowNode.parent.layout.updatePositionAndSize();
+        const couldInsertIntoSibling = this._insertIntoSiblingByDirection(
+            windowNode,
+            windowNode,
+            direction,
+        );
+        if (couldInsertIntoSibling) {
+            console.log('insert into sibling');
             return true;
         }
         const couldMoveWithinLayout = windowNode.parent.layout.moveChild(windowNode, direction);
@@ -193,6 +184,12 @@ export class RootLayout {
         const layoutType = ['up', 'down'].includes(direction) ? 'split-v' : 'split-h';
         let node: LayoutNode | null = parent;
         while (node) {
+            if (node.parent) {
+                const couldInsert = this._insertIntoSiblingByDirection(node, windowNode, direction);
+                if (couldInsert) {
+                    return true;
+                }
+            }
             if (node.layout.type !== layoutType) {
                 console.log('split move');
                 this._splitMove(windowNode, node, layoutType, direction);
@@ -202,6 +199,29 @@ export class RootLayout {
         }
         console.log('Could not move window', direction);
         return false;
+    }
+
+    private _insertIntoSiblingByDirection(
+        node: Node,
+        windowNode: WindowNode,
+        direction: Direction,
+    ): boolean {
+        console.log('try _insertIntoChildByDirection');
+        const child = node.parent?.layout.getChildByDirection(node, direction);
+        console.log('child', !!child);
+        child?.debug();
+        if (child && node.parent!.layout.type !== this.config.defaultLayout) {
+            console.log('do _insertIntoChildByDirection', windowNode.window.get_id(), direction);
+            this._removeTilingWindow(windowNode.window);
+            child.insertWindow(windowNode.window, this.config.defaultLayout);
+            // Crash when creating 3 windows, moving one right and left again.
+            // this._removeSingleChildLayout(parent);
+            node.parent!.layout.updatePositionAndSize();
+            this.tiling.debug();
+            return true;
+        } else {
+            return false;
+        }
     }
 
     private _splitMove(

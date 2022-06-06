@@ -20,7 +20,7 @@ export class LayoutNode<T extends TilingLayout = TilingLayout> extends BaseNode 
         this.layout.children.forEach((child) => {
             child.node.debug(level + 1);
             if (child.node.parent !== this) {
-                console.log(indent + `  ** PARENT DOES NOT MATCH **`)
+                console.log(indent + `  ** PARENT DOES NOT MATCH **`);
             }
             // console.log(indent + `  (${(child as any).size})`);
         });
@@ -38,7 +38,7 @@ export class LayoutNode<T extends TilingLayout = TilingLayout> extends BaseNode 
         }
         if (node.layout.children.length === 0 || node.layout.type === layoutType) {
             // Add the window to the existing layout.
-            console.log('add to existing', window.get_id())
+            console.log('add to existing', window.get_id());
             // this.debug();
             node.insertWindowHere(window);
             node.layout.updatePositionAndSize();
@@ -75,11 +75,12 @@ export class WindowNode extends BaseNode {
      */
     insertWindow(window: Window, layoutType: TilingType): void {
         const nodeWindow = this.window;
+        const index = this.parent.layout.children.findIndex((child) => child.node === this);
         const newLayout = createTilingLayout(layoutType);
         const newNode = new LayoutNode(this.parent, newLayout);
         newNode.insertWindowHere(nodeWindow);
         newNode.insertWindowHere(window);
-        this.parent.layout.children[0].node = newNode;
+        this.parent.layout.children[index].node = newNode;
         newLayout.updatePositionAndSize(nodeWindow.get_frame_rect(), this.parent.layout.gapSize);
     }
 
