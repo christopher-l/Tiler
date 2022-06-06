@@ -174,23 +174,36 @@ export class RootLayout {
             return true;
         }
         const layoutType = ['up', 'down'].includes(direction) ? 'split-v' : 'split-h';
-        if (parent.layout.type !== layoutType) {
-            windowNode.parent.layout.removeWindow(window);
-            const rect = parent.layout.rect;
-            const newLayout = new SplitLayout(layoutType);
-            const newNode = new LayoutNode(parent, parent.layout);
-            parent.layout.children.forEach((child) => (child.node.parent = newNode));
-            newLayout.insertNode(newNode);
-            parent.layout = newLayout;
-            parent.layout.insertAtDirection(windowNode, direction);
-            windowNode.parent = parent;
-            this._removeSingleChildLayout(newNode);
-            parent.layout.updatePositionAndSize(rect, this.config.gapSize);
-            this.tiling.print();
-            return true;
+        let node: LayoutNode | null = parent;
+        while (node) {
+            if (node.layout.type !== layoutType) {
+                this._splitMove(windowNode, node, layoutType, direction);
+                return true;
+            }
+            node = node.parent;
         }
         console.log('Could not move window', direction);
         return false;
+    }
+
+    private _splitMove(
+        windowNode: WindowNode,
+        parent: LayoutNode<TilingLayout>,
+        layoutType: 'split-h' | 'split-v',
+        direction: Direction,
+    ) {
+        windowNode.parent.layout.removeWindow(windowNode.window);
+        const rect = parent.layout.rect;
+        const newLayout = new SplitLayout(layoutType);
+        const newNode = new LayoutNode(parent, parent.layout);
+        parent.layout.children.forEach((child) => (child.node.parent = newNode));
+        newLayout.insertNode(newNode);
+        parent.layout = newLayout;
+        parent.layout.insertAtDirection(windowNode, direction);
+        windowNode.parent = parent;
+        this._removeSingleChildLayout(newNode);
+        parent.layout.updatePositionAndSize(rect, this.config.gapSize);
+        this.tiling.print();
     }
 
     private _moveFloatingFocus(window: Window, direction: Direction): boolean {
