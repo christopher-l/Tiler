@@ -75,7 +75,7 @@ export class WindowNode extends BaseNode {
         newNode.insertWindowHere(nodeWindow);
         newNode.insertWindowHere(window);
         this.parent.layout.children[0].node = newNode;
-        newLayout.updatePositionAndSize(nodeWindow.get_frame_rect());
+        newLayout.updatePositionAndSize(nodeWindow.get_frame_rect(), this.parent.layout.gapSize);
     }
 
     // removeFromTree(): void {

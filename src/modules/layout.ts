@@ -157,8 +157,9 @@ export class RootLayout {
             return false;
         }
         const windowNode = window.tilerLayoutState!.node!;
+        const parent = windowNode.parent;
         const child = windowNode.parent.layout.getChildByDirection(windowNode, direction);
-        if (child) {
+        if (child && parent.layout.type !== this.config.defaultLayout) {
             this._removeTilingWindow(window);
             child.insertWindow(window, this.config.defaultLayout);
             this.tiling.print();
@@ -170,25 +171,23 @@ export class RootLayout {
             windowNode.parent.layout.updatePositionAndSize();
             return true;
         }
-        const parent = windowNode.parent;
-        // if (parent) {
-        windowNode.parent.layout.removeWindow(window);
-        // if (!parent.layout.canInsertAtDirection(direction)) {
-        const rect = parent.layout.rect;
-        const newLayout = new SplitLayout(
-            ['up', 'down'].includes(direction) ? 'split-v' : 'split-h',
-        );
-        const newNode = new LayoutNode(parent, parent.layout);
-        newLayout.insertNode(newNode);
-        parent.layout = newLayout;
-        // }
-        parent.layout.insertAtDirection(windowNode, direction);
-        windowNode.parent = parent;
-        this._removeSingleChildLayout(newNode);
-        parent.layout.updatePositionAndSize(rect, this.config.gapSize);
-        this.tiling.print();
-        return true;
-        // }
+        const layoutType = ['up', 'down'].includes(direction) ? 'split-v' : 'split-h';
+        if (parent.layout.type !== layoutType) {
+            windowNode.parent.layout.removeWindow(window);
+            const rect = parent.layout.rect;
+            const newLayout = new SplitLayout(layoutType);
+            const newNode = new LayoutNode(parent, parent.layout);
+            newLayout.insertNode(newNode);
+            parent.layout = newLayout;
+            parent.layout.insertAtDirection(windowNode, direction);
+            windowNode.parent = parent;
+            this._removeSingleChildLayout(newNode);
+            parent.layout.updatePositionAndSize(rect, this.config.gapSize);
+            this.tiling.print();
+            return true;
+        }
+        console.log('Could not move window', direction);
+        return false;
     }
 
     private _moveFloatingFocus(window: Window, direction: Direction): boolean {
@@ -212,9 +211,7 @@ export class RootLayout {
 
     /** If there is only one child left in the layout, replace the layout by the child node. */
     private _removeSingleChildLayout(node: LayoutNode): void {
-        if (
-            node.layout.children.length === 1
-        ) {
+        if (node.layout.children.length === 1) {
             if (node.layout.children[0].node.kind === 'layout') {
                 const rect = node.layout.rect;
                 node.layout = node.layout.children[0].node.layout;
