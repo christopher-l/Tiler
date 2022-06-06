@@ -128,12 +128,14 @@ export class RootLayout {
     }
 
     private _focusDirection(node: Node, direction: Direction): boolean {
-        let nodeToFocus = node.parent!.layout.getChildByDirection(node, direction);
-        if (nodeToFocus) {
-            this._focus(nodeToFocus);
-            return true;
+        while (node.parent) {
+            let nodeToFocus = node.parent!.layout.getChildByDirection(node, direction);
+            if (nodeToFocus) {
+                this._focus(nodeToFocus);
+                return true;
+            }
+            node = node.parent;
         }
-        // TODO
         return false;
     }
 
@@ -177,6 +179,7 @@ export class RootLayout {
             const rect = parent.layout.rect;
             const newLayout = new SplitLayout(layoutType);
             const newNode = new LayoutNode(parent, parent.layout);
+            parent.layout.children.forEach((child) => (child.node.parent = newNode));
             newLayout.insertNode(newNode);
             parent.layout = newLayout;
             parent.layout.insertAtDirection(windowNode, direction);
