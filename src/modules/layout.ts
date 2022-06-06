@@ -67,7 +67,7 @@ export class RootLayout {
         // this.floating.push(window);
         if (window.tilerLayoutState!.restoreRect) {
             const rect = window.tilerLayoutState!.restoreRect;
-            window.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
+            resizeWindow(window, rect);
             window.tilerLayoutState!.restoreRect = null;
         }
     }
@@ -159,7 +159,7 @@ export class RootLayout {
         const windowNode = window.tilerLayoutState!.node!;
         const child = windowNode.parent.layout.getChildByDirection(windowNode, direction);
         if (child) {
-            windowNode.parent.layout.removeWindow(window);
+            this._removeTilingWindow(window);
             child.insertWindow(window, this.config.defaultLayout);
             return true;
         }
@@ -168,21 +168,25 @@ export class RootLayout {
             windowNode.parent.layout.updatePositionAndSize();
             return true;
         }
-        const grandParent = windowNode.parent.parent;
-        if (grandParent) {
-            if (!grandParent.layout.canInsertAtDirection(direction)) {
-                const newLayout = new SplitLayout(
-                    ['up', 'down'].includes(direction) ? 'split-v' : 'split-h',
-                );
-                newLayout.insertNode(new LayoutNode(grandParent, grandParent.layout));
-                grandParent.layout = newLayout;
-            }
-            windowNode.parent.layout.removeWindow(window);
-            grandParent.layout.insertAtDirection(windowNode, direction);
-            windowNode.parent = grandParent;
-            return true;
-        }
-        return false;
+        const parent = windowNode.parent;
+        // if (parent) {
+        windowNode.parent.layout.removeWindow(window);
+        // if (!parent.layout.canInsertAtDirection(direction)) {
+        const rect = parent.layout.rect;
+        const newLayout = new SplitLayout(
+            ['up', 'down'].includes(direction) ? 'split-v' : 'split-h',
+        );
+        const newNode = new LayoutNode(parent, parent.layout);
+        newLayout.insertNode(newNode);
+        parent.layout = newLayout;
+        // }
+        parent.layout.insertAtDirection(windowNode, direction);
+        windowNode.parent = parent;
+        this._removeSingleChildLayout(newNode);
+        parent.layout.updatePositionAndSize(rect, this.config.gapSize);
+        this.tiling.print();
+        return true;
+        // }
     }
 
     private _moveFloatingFocus(window: Window, direction: Direction): boolean {
@@ -201,9 +205,13 @@ export class RootLayout {
         const parent = window.tilerLayoutState!.node!.parent!;
         parent.layout.removeWindow(window);
         window.tilerLayoutState!.node = null;
-        // If there is only one child left in the layout, replace the layout by the child node.
-        if (parent.layout.children.length === 1 && parent.parent) {
-            this._replaceLayout(parent, parent.layout.children[0].node);
+        this._removeSingleChildLayout(parent);
+    }
+
+    /** If there is only one child left in the layout, replace the layout by the child node. */
+    private _removeSingleChildLayout(node: LayoutNode): void {
+        if (node.layout.children.length === 1 && node.parent) {
+            this._replaceLayout(node, node.layout.children[0].node);
         }
     }
 
@@ -260,6 +268,7 @@ abstract class BaseLayout {
     rect?: Meta.Rectangle;
     gapSize?: number;
     abstract children: { node: Node }[];
+    abstract type: 'split-v' | 'split-h' | 'stacking';
 
     getChildByDirection(node: Node, direction: Direction): Node | null {
         const indexDiff = this._getIndexDiff(direction);
@@ -297,10 +306,12 @@ abstract class BaseLayout {
         switch (this._getIndexDiff(direction)) {
             case -1:
                 this.insertNode(node, 0);
+                break;
             case 1:
                 this.insertNode(node);
+                break;
             default:
-                throw new Error('Could not insert in direction: ' + direction);
+                throw new Error(`Cannot insert in ${this.type} in direction ${direction}`);
         }
     }
 
@@ -366,7 +377,7 @@ class SplitLayout extends BaseLayout {
             const width = this.type === 'split-h' ? tileEnd - tileStart : rect.width;
             const height = this.type === 'split-v' ? tileEnd - tileStart : rect.height;
             if (child.node.kind === 'window') {
-                child.node.window.move_resize_frame(false, x, y, width, height);
+                resizeWindow(child.node.window, { x, y, width, height });
             } else {
                 child.node.layout.updatePositionAndSize(
                     createRectangle(x, y, width, height),
@@ -414,7 +425,7 @@ class StackingLayout extends BaseLayout {
         const height = rect.height - (this.children.length - 1) * STACKING_OFFSET;
         this.children.forEach((child, index) => {
             const y = rect.y + index * STACKING_OFFSET;
-            child.node.window.move_resize_frame(false, rect.x, y, rect.width, height);
+            resizeWindow(child.node.window, { ...rect, y });
         });
     }
 
@@ -456,4 +467,14 @@ function subtractGaps(rect: Meta.Rectangle, gapSize: number): Meta.Rectangle {
 function normalizeSizes(children: { size: number }[]): void {
     const sum = children.reduce((sum, { size }) => sum + size, 0);
     children.forEach((child) => (child.size /= sum));
+}
+
+function resizeWindow(
+    window: Window,
+    { x, y, width, height }: { x: number; y: number; width: number; height: number },
+) {
+    if ([x, y, width, height].some(isNaN)) {
+        throw new Error('Called resizeWindow with NaN');
+    }
+    window.move_resize_frame(false, x, y, width, height);
 }

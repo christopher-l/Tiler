@@ -14,6 +14,15 @@ export class LayoutNode<T extends TilingLayout = TilingLayout> extends BaseNode 
         super();
     }
 
+    print(level = 0): void {
+        const indent = ' '.repeat(level * 2);
+        console.log(indent + `Node ${this.kind} ${this.layout.type}:`);
+        this.layout.children.forEach((child) => {
+            child.node.print(level + 1);
+            // console.log(indent + `  (${(child as any).size})`);
+        });
+    }
+
     insertWindow(window: Window, layoutType: TilingType): void {
         // TODO: insert at current focus position
         let node: LayoutNode = this;
@@ -50,6 +59,11 @@ export class WindowNode extends BaseNode {
         super();
     }
 
+    print(level = 0): void {
+        const indent = ' '.repeat(level * 2);
+        console.log(indent + `Node ${this.kind} ${this.window.get_id()}`);
+    }
+
     /**
      * Replaces the first window of the existing layout with the default layout, holding the
      * existing window and the new one.
@@ -63,6 +77,16 @@ export class WindowNode extends BaseNode {
         this.parent.layout.children[0].node = newNode;
         newLayout.updatePositionAndSize(nodeWindow.get_frame_rect());
     }
+
+    // removeFromTree(): void {
+    //     const parent = this.parent;
+    //     parent.layout.removeWindow(this.window);
+    //     this.window.tilerLayoutState!.node = null;
+    //     // If there is only one child left in the layout, replace the layout by the child node.
+    //     if (parent.layout.children.length === 1 && parent.parent) {
+    //         parent.replaceLayout(parent.layout.children[0].node);
+    //     }
+    // }
 }
 
 export type Node = LayoutNode | WindowNode;
