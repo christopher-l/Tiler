@@ -161,6 +161,8 @@ export class RootLayout {
         if (child) {
             this._removeTilingWindow(window);
             child.insertWindow(window, this.config.defaultLayout);
+            this.tiling.print();
+            windowNode.parent.layout.updatePositionAndSize();
             return true;
         }
         const couldMoveWithinLayout = windowNode.parent.layout.moveChild(windowNode, direction);
@@ -210,8 +212,16 @@ export class RootLayout {
 
     /** If there is only one child left in the layout, replace the layout by the child node. */
     private _removeSingleChildLayout(node: LayoutNode): void {
-        if (node.layout.children.length === 1 && node.parent) {
-            this._replaceLayout(node, node.layout.children[0].node);
+        if (
+            node.layout.children.length === 1
+        ) {
+            if (node.layout.children[0].node.kind === 'layout') {
+                const rect = node.layout.rect;
+                node.layout = node.layout.children[0].node.layout;
+                node.layout.rect = rect;
+            } else if (node.parent) {
+                this._replaceLayout(node, node.layout.children[0].node);
+            }
         }
     }
 
