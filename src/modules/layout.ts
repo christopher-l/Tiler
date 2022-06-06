@@ -1,4 +1,5 @@
 import { Meta } from 'imports/gi';
+import { LayoutNode, Node, WindowNode } from 'modules/node';
 import { Window } from 'types/extended/window';
 
 export type WindowState = 'floating' | 'tiling';
@@ -12,28 +13,14 @@ export interface LayoutConfig {
     rootRect: Meta.Rectangle;
 }
 
-type BaseNode = {
-    parent: LayoutNode | null;
-    lastFocusTime?: number;
-};
-export type LayoutNode<T extends TilingLayout = TilingLayout> = {
-    kind: 'layout';
-    layout: T;
-} & BaseNode;
-export type WindowNode = { kind: 'window'; window: Window } & BaseNode & { parent: LayoutNode };
-type Node = LayoutNode | WindowNode;
-
 export class RootLayout {
     // floating: Window[] = [];
-    tiling: LayoutNode = {
-        parent: null,
-        kind: 'layout',
-        layout: createTilingLayout(this, this.config.defaultLayout),
-    };
+    tiling = new LayoutNode(null, createTilingLayout(this.config.defaultLayout));
 
     constructor(public config: LayoutConfig) {
         this.tiling.layout.updatePositionAndSize(
             subtractGaps(this.config.rootRect, this.config.gapSize),
+            config.gapSize,
         );
     }
 
@@ -96,58 +83,8 @@ export class RootLayout {
         }
         window.tilerLayoutState!.state = 'tiling';
         window.tilerLayoutState!.restoreRect = window.get_frame_rect();
-        this._insertWindowIntoLayout(window, this.tiling);
+        this.tiling.insertWindow(window, this.config.defaultLayout);
         return true;
-    }
-
-    private _insertWindowIntoNode(window: Window, node: Node): void {
-        switch (node.kind) {
-            case 'layout':
-                this._insertWindowIntoLayout(window, node);
-                break;
-            case 'window':
-                this._insertWindowIntoNode(window, node);
-                break;
-        }
-    }
-
-    private _insertWindowIntoLayout(window: Window, node: LayoutNode): void {
-        // TODO: insert at current focus position
-        while (
-            node.kind === 'layout' &&
-            node.layout.children.length > 0 &&
-            node.layout.children[0].node.kind === 'layout'
-        ) {
-            node = node.layout.children[0].node;
-        }
-        if (node.layout.children.length === 0 || node.layout.type === this.config.defaultLayout) {
-            // Add the window to the existing layout.
-            node.layout.insertWindow(window, node);
-            node.layout.updatePositionAndSize();
-        } else if (node.layout.children[0]?.node.kind === 'window') {
-            this._insertWindowIntoWindowNode(window, node.layout.children[0].node);
-        } else {
-            throw new Error('unreachable');
-        }
-    }
-
-    /**
-     * Replaces the first window of the existing layout with the default layout, holding the
-     * existing window and the new one.
-     */
-    private _insertWindowIntoWindowNode(window: Window, node: WindowNode): void {
-        const nodeWindow = node.window;
-        const newLayout = createTilingLayout(this, this.config.defaultLayout);
-        const parent = node.parent!;
-        const newNode: LayoutNode = {
-            parent,
-            kind: 'layout',
-            layout: newLayout,
-        };
-        newLayout.insertWindow(nodeWindow, newNode);
-        newLayout.insertWindow(window, newNode);
-        parent.layout.children[0].node = newNode;
-        newLayout.updatePositionAndSize(nodeWindow.get_frame_rect());
     }
 
     onWindowFocus(window: Window): void {
@@ -230,11 +167,11 @@ export class RootLayout {
             const child = node.parent.layout.getChildByDirection(node, direction);
             if (child) {
                 node.parent.layout.removeWindow(window);
-                this._insertWindowIntoNode(window, child);
+                child.insertWindow(window, this.config.defaultLayout);
                 return true;
             }
             // TODO
-            node = node.parent
+            node = node.parent;
         }
         return false;
     }
@@ -297,13 +234,13 @@ export class RootLayout {
     }
 }
 
-function createTilingLayout(root: RootLayout, type: TilingType): TilingLayout {
+export function createTilingLayout(type: TilingType): TilingLayout {
     switch (type) {
         case 'split-h':
         case 'split-v':
-            return new SplitLayout(root, type);
+            return new SplitLayout(type);
         case 'stacking':
-            return new StackingLayout(root);
+            return new StackingLayout();
     }
 }
 
@@ -311,9 +248,8 @@ export type TilingLayout = SplitLayout | StackingLayout;
 
 abstract class BaseLayout {
     rect?: Meta.Rectangle;
+    gapSize?: number;
     abstract children: { node: Node }[];
-
-    constructor(public root: RootLayout) {}
 
     getChildByDirection(node: Node, direction: Direction): Node | null {
         const indexDiff = this._getIndexDiff(direction);
@@ -366,19 +302,16 @@ class SplitLayout extends BaseLayout {
         node: Node;
     }[] = [];
 
-    constructor(root: RootLayout, public type: 'split-h' | 'split-v') {
-        super(root);
+    constructor(public type: 'split-h' | 'split-v') {
+        super();
     }
 
-    insertWindow(window: Window, node: LayoutNode): void {
-        const newNode: WindowNode = { kind: 'window', window, parent: node };
+    insertWindowNode(node: WindowNode): void {
         this.children.push({
             size: 1 / (this.children.length || 1),
-            node: newNode,
+            node,
         });
         normalizeSizes(this.children);
-        window.tilerLayoutState!.node = newNode;
-        window.tilerLayoutState!.state = 'tiling';
     }
 
     removeWindow(window: Window): void {
@@ -388,8 +321,12 @@ class SplitLayout extends BaseLayout {
         window.tilerLayoutState!.node = null;
     }
 
-    updatePositionAndSize(rect: Meta.Rectangle = this.rect!): void {
+    updatePositionAndSize(
+        rect: Meta.Rectangle = this.rect!,
+        gapSize: number = this.gapSize!,
+    ): void {
         this.rect = rect;
+        this.gapSize = gapSize;
         let offset = 0;
         let sizeAcc = 0;
         const totalTiledSize = this.type === 'split-h' ? rect.width : rect.height;
@@ -397,8 +334,7 @@ class SplitLayout extends BaseLayout {
             sizeAcc += child.size;
             const tileStart = offset;
             const tileEnd =
-                (totalTiledSize - (this.children.length - 1 - index) * this.root.config.gapSize) *
-                sizeAcc;
+                (totalTiledSize - (this.children.length - 1 - index) * gapSize) * sizeAcc;
             const x = this.type === 'split-h' ? tileStart + rect.x : rect.x;
             const y = this.type === 'split-v' ? tileStart + rect.y : rect.y;
             const width = this.type === 'split-h' ? tileEnd - tileStart : rect.width;
@@ -406,9 +342,12 @@ class SplitLayout extends BaseLayout {
             if (child.node.kind === 'window') {
                 child.node.window.move_resize_frame(false, x, y, width, height);
             } else {
-                child.node.layout.updatePositionAndSize(createRectangle(x, y, width, height));
+                child.node.layout.updatePositionAndSize(
+                    createRectangle(x, y, width, height),
+                    gapSize,
+                );
             }
-            offset = tileEnd + this.root.config.gapSize;
+            offset = tileEnd + gapSize;
         });
     }
 
@@ -434,15 +373,8 @@ class StackingLayout extends BaseLayout {
     type: 'stacking' = 'stacking';
     children: { node: WindowNode }[] = [];
 
-    constructor(root: RootLayout) {
-        super(root);
-    }
-
-    insertWindow(window: Window, node: LayoutNode): void {
-        const newNode: WindowNode = { kind: 'window', window, parent: node };
-        this.children.push({ node: newNode });
-        window.tilerLayoutState!.node = newNode;
-        window.tilerLayoutState!.state = 'tiling';
+    insertWindowNode(node: WindowNode): void {
+        this.children.push({ node });
     }
 
     removeWindow(window: Window): void {

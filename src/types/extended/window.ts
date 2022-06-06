@@ -1,11 +1,12 @@
 import { Meta } from 'imports/gi';
-import { LayoutNode, RootLayout, WindowNode, WindowState } from 'modules/layout';
+import { RootLayout, WindowState } from 'modules/layout';
+import { WindowNode } from 'modules/node';
 import { DebouncingNotifier } from 'utils/DebouncingNotifier';
 
 export type WindowTilingState = {
     rootLayout?: RootLayout | null;
     state?: WindowState;
-    node?: WindowNode | null // Set when state: 'tiling'
+    node?: WindowNode | null; // Set when state: 'tiling'
     restoreRect?: Meta.Rectangle | null;
 };
 
