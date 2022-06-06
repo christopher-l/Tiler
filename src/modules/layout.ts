@@ -160,6 +160,9 @@ export class RootLayout {
         }
         const windowNode = window.tilerLayoutState!.node!;
         const parent = windowNode.parent;
+        if (this._isRoot(parent) && parent.layout.children.length <= 1) {
+            return false;
+        }
         const child = windowNode.parent.layout.getChildByDirection(windowNode, direction);
         if (child && parent.layout.type !== this.config.defaultLayout) {
             console.log('merge with child');
