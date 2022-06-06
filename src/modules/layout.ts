@@ -168,15 +168,19 @@ export class RootLayout {
             windowNode.parent.layout.updatePositionAndSize();
             return true;
         }
-        let node = windowNode.parent;
-        while (node.parent) {
-            // TODO
-            if (node.parent.layout.canInsertAtDirection(direction)) {
-                windowNode.parent.layout.removeWindow(window);
-                node.parent.layout.insertAtDirection(windowNode, direction);
-                windowNode.parent = node.parent;
+        const grandParent = windowNode.parent.parent;
+        if (grandParent) {
+            if (!grandParent.layout.canInsertAtDirection(direction)) {
+                const newLayout = new SplitLayout(
+                    ['up', 'down'].includes(direction) ? 'split-v' : 'split-h',
+                );
+                newLayout.insertNode(new LayoutNode(grandParent, grandParent.layout));
+                grandParent.layout = newLayout;
             }
-            node = node.parent;
+            windowNode.parent.layout.removeWindow(window);
+            grandParent.layout.insertAtDirection(windowNode, direction);
+            windowNode.parent = grandParent;
+            return true;
         }
         return false;
     }
@@ -292,15 +296,15 @@ abstract class BaseLayout {
     insertAtDirection(node: WindowNode, direction: Direction): void {
         switch (this._getIndexDiff(direction)) {
             case -1:
-                this.insertWindowNode(node, 0);
+                this.insertNode(node, 0);
             case 1:
-                this.insertWindowNode(node);
+                this.insertNode(node);
             default:
                 throw new Error('Could not insert in direction: ' + direction);
         }
     }
 
-    abstract insertWindowNode(node: WindowNode, position?: number): void;
+    abstract insertNode(node: WindowNode, position?: number): void;
 
     protected _getChildIndex(node: Node): number {
         const index = this.children.findIndex((child) => child.node === node);
@@ -329,7 +333,7 @@ class SplitLayout extends BaseLayout {
         super();
     }
 
-    insertWindowNode(node: WindowNode, position = this.children.length): void {
+    insertNode(node: Node, position = this.children.length): void {
         this.children.splice(position, 0, {
             size: 1 / (this.children.length || 1),
             node,
@@ -395,7 +399,7 @@ class StackingLayout extends BaseLayout {
     type: 'stacking' = 'stacking';
     children: { node: WindowNode }[] = [];
 
-    insertWindowNode(node: WindowNode, position = this.children.length): void {
+    insertNode(node: WindowNode, position = this.children.length): void {
         this.children.splice(position, 0, { node });
     }
 
