@@ -38,6 +38,8 @@ export class LayoutNode<T extends TilingLayout = TilingLayout> extends BaseNode 
         }
         if (node.layout.children.length === 0 || node.layout.type === layoutType) {
             // Add the window to the existing layout.
+            console.log('add to existing', window.get_id())
+            // this.debug();
             node.insertWindowHere(window);
             node.layout.updatePositionAndSize();
         } else if (node.layout.children[0]?.node.kind === 'window') {

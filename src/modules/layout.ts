@@ -155,6 +155,9 @@ export class RootLayout {
      * layout.
      */
     moveWindow(window: Window, direction: Direction): boolean {
+        console.log('moveWindow ------');
+        this.tiling.debug();
+        console.log('-----------------');
         if (window.tilerLayoutState!.state !== 'tiling') {
             return false;
         }
@@ -166,10 +169,18 @@ export class RootLayout {
         const child = windowNode.parent.layout.getChildByDirection(windowNode, direction);
         if (child && parent.layout.type !== this.config.defaultLayout) {
             console.log('merge with child');
-            this._removeTilingWindow(window);
-            child.insertWindow(window, this.config.defaultLayout);
-            this._removeSingleChildLayout(parent);
+            console.log('--- child before remove');
+            child.debug();
+            console.log('--- tree before remove');
             this.tiling.debug();
+            this._removeTilingWindow(window);
+            console.log('--- child after remove');
+            child.debug();
+            console.log('--- tree after remove');
+            this.tiling.debug();
+            child.insertWindow(window, this.config.defaultLayout);
+            this.tiling.debug();
+            // this._removeSingleChildLayout(parent);
             windowNode.parent.layout.updatePositionAndSize();
             return true;
         }
@@ -242,14 +253,22 @@ export class RootLayout {
     /** If there is only one child left in the layout, replace the layout by the child node. */
     private _removeSingleChildLayout(node: LayoutNode): void {
         if (node.layout.children.length === 1) {
-            if (node.layout.children[0].node.kind === 'layout') {
-                const rect = node.layout.rect;
-                node.layout = node.layout.children[0].node.layout;
-                node.layout.rect = rect;
-                node.layout.children.forEach((child) => (child.node.parent = node));
-            } else if (node.parent) {
-                this._replaceLayout(node, node.layout.children[0].node);
+            const childNode = node.layout.children[0].node;
+            if (this._isRoot(node)) {
+                if (childNode.kind === 'layout') {
+                    this.tiling = childNode;
+                    childNode.parent = null;
+                }
+            } else {
+                this._replaceLayout(node, childNode);
             }
+            // if (node.layout.children[0].node.kind === 'layout') {
+            //     const rect = node.layout.rect;
+            //     node.layout = node.layout.children[0].node.layout;
+            //     node.layout.rect = rect;
+            //     node.layout.children.forEach((child) => (child.node.parent = node));
+            // } else if (node.parent) {
+            // }
         }
     }
 
@@ -287,6 +306,10 @@ export class RootLayout {
         } else {
             return this.config.defaultWindowState;
         }
+    }
+
+    private _isRoot(node: Node): boolean {
+        return this.tiling === node;
     }
 }
 
