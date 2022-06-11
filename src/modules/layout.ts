@@ -101,10 +101,17 @@ export class RootLayout {
             const mostRecentlyFocusedChild = node.layout.getMostRecentlyFocusedChild();
             if (mostRecentlyFocusedChild) {
                 ({ node, index } = mostRecentlyFocusedChild);
+            } else {
+                // Root layout with no windows
+                break;
             }
         }
         const parent = node.parent || this.tiling;
-        if (this._isRoot(parent) || parent.layout.type === this.config.defaultLayout) {
+        if (
+            node.kind === 'layout' ||
+            // this._isRoot(parent) ||
+            parent.layout.type === this.config.defaultLayout
+        ) {
             parent.insertWindow(window, index + 1);
             parent.layout.updatePositionAndSize();
         } else {
