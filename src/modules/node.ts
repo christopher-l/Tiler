@@ -26,32 +26,10 @@ export class LayoutNode<T extends TilingLayout = TilingLayout> extends BaseNode 
         });
     }
 
-    insertWindow(window: Window, layoutType: TilingType): void {
-        // TODO: insert at current focus position
-        let node: LayoutNode = this;
-        while (
-            node.kind === 'layout' &&
-            node.layout.children.length > 0 &&
-            node.layout.children[0].node.kind === 'layout'
-        ) {
-            node = node.layout.children[0].node;
-        }
-        if (node.layout.children.length === 0 || node.layout.type === layoutType) {
-            // Add the window to the existing layout.
-            console.log('add to existing', window.get_id());
-            // this.debug();
-            node.insertWindowHere(window);
-            node.layout.updatePositionAndSize();
-        } else if (node.layout.children[0]?.node.kind === 'window') {
-            node.layout.children[0].node.insertWindow(window, layoutType);
-        } else {
-            throw new Error('unreachable');
-        }
-    }
 
-    insertWindowHere(window: Window): void {
+    insertWindow(window: Window, index?: number): void {
         const node = new WindowNode(this, window);
-        this.layout.insertNode(node);
+        this.layout.insertNode(node, index);
         window.tilerLayoutState!.node = node;
         // window.tilerLayoutState!.state = 'tiling';
     }
@@ -67,21 +45,6 @@ export class WindowNode extends BaseNode {
     debug(level = 0): void {
         const indent = ' '.repeat(level * 2);
         console.log(indent + `Node ${this.kind} ${this.window.get_id()}`);
-    }
-
-    /**
-     * Replaces the first window of the existing layout with the default layout, holding the
-     * existing window and the new one.
-     */
-    insertWindow(window: Window, layoutType: TilingType): void {
-        const nodeWindow = this.window;
-        const index = this.parent.layout.children.findIndex((child) => child.node === this);
-        const newLayout = createTilingLayout(layoutType);
-        const newNode = new LayoutNode(this.parent, newLayout);
-        newNode.insertWindowHere(nodeWindow);
-        newNode.insertWindowHere(window);
-        this.parent.layout.children[index].node = newNode;
-        newLayout.updatePositionAndSize(nodeWindow.get_frame_rect(), this.parent.layout.gapSize);
     }
 
     // removeFromTree(): void {

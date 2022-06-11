@@ -83,7 +83,7 @@ export class RootLayout {
         }
         window.tilerLayoutState!.state = 'tiling';
         window.tilerLayoutState!.restoreRect = window.get_frame_rect();
-        this.tiling.insertWindow(window, this.config.defaultLayout);
+        this._insertUnderNode(window);
         return true;
     }
 
@@ -95,21 +95,34 @@ export class RootLayout {
         }
     }
 
-    private _getMostRecentlyFocusedChild(node: LayoutNode): Node {
-        const children: { node: Node }[] = node.layout.children;
-        return children.reduce((node, child) => {
-            if (node === null) {
-                return child.node;
-            } else if (!child.node.lastFocusTime) {
-                return node;
-            } else if (!node.lastFocusTime) {
-                return child.node;
-            } else if (node.lastFocusTime > child.node.lastFocusTime) {
-                return node;
-            } else {
-                return child.node;
+    private _insertUnderNode(window: Window, node: Node = this.tiling): void {
+        let index = -1;
+        while (node.kind === 'layout') {
+            const mostRecentlyFocusedChild = node.layout.getMostRecentlyFocusedChild();
+            if (mostRecentlyFocusedChild) {
+                ({ node, index } = mostRecentlyFocusedChild);
             }
-        }, null as Node | null) as Node;
+        }
+        const parent = node.parent || this.tiling;
+        if (this._isRoot(parent) || parent.layout.type === this.config.defaultLayout) {
+            parent.insertWindow(window, index + 1);
+            parent.layout.updatePositionAndSize();
+        } else {
+            this._insertUnderWindowNode(window, node);
+        }
+    }
+    /**
+     * Replaces the window with the default layout, holding the existing window and the new one.
+     */
+    private _insertUnderWindowNode(window: Window, node: WindowNode): void {
+        const nodeWindow = node.window;
+        const index = node.parent.layout.children.findIndex((child) => child.node === node);
+        const newLayout = createTilingLayout(this.config.defaultLayout);
+        const newNode = new LayoutNode(node.parent, newLayout);
+        newNode.insertWindow(nodeWindow);
+        newNode.insertWindow(window);
+        node.parent.layout.children[index].node = newNode;
+        newLayout.updatePositionAndSize(nodeWindow.get_frame_rect(), this.config.gapSize);
     }
 
     /**
@@ -144,7 +157,10 @@ export class RootLayout {
             node.window.focus(global.get_current_time());
             node.window.raise();
         } else {
-            this._focus(this._getMostRecentlyFocusedChild(node));
+            const mostRecentlyFocusedChild = node.layout.getMostRecentlyFocusedChild();
+            if (mostRecentlyFocusedChild) {
+                this._focus(mostRecentlyFocusedChild.node);
+            }
         }
     }
 
@@ -214,7 +230,7 @@ export class RootLayout {
         if (child && node.parent!.layout.type !== this.config.defaultLayout) {
             console.log('do _insertIntoChildByDirection', windowNode.window.get_id(), direction);
             this._removeTilingWindow(windowNode.window);
-            child.insertWindow(windowNode.window, this.config.defaultLayout);
+            this._insertUnderNode(windowNode.window, child);
             // Crash when creating 3 windows, moving one right and left again.
             // this._removeSingleChildLayout(parent);
             node.parent!.layout.updatePositionAndSize();
@@ -404,6 +420,16 @@ abstract class BaseLayout {
         }
     }
 
+    getMostRecentlyFocusedChild(): { node: Node; index: number } | null {
+        return this.children.reduce((result, { node }, index) => {
+            if ((result?.node.lastFocusTime ?? 0) > (node.lastFocusTime ?? 0)) {
+                return result;
+            } else {
+                return { node, index };
+            }
+        }, null as { node: Node; index: number } | null);
+    }
+
     abstract insertNode(node: WindowNode, position?: number): void;
 
     protected _getChildIndex(node: Node): number {
@@ -499,8 +525,8 @@ class StackingLayout extends BaseLayout {
     type: 'stacking' = 'stacking';
     children: { node: WindowNode }[] = [];
 
-    insertNode(node: WindowNode, position = this.children.length): void {
-        this.children.splice(position, 0, { node });
+    insertNode(node: WindowNode, index = this.children.length): void {
+        this.children.splice(index, 0, { node });
     }
 
     removeWindow(window: Window): void {
