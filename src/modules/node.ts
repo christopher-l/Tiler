@@ -16,16 +16,21 @@ export class LayoutNode<T extends TilingLayout = TilingLayout> extends BaseNode 
 
     debug(level = 0): void {
         const indent = ' '.repeat(level * 2);
-        console.log(indent + `Node ${this.kind} ${this.layout.type}:`);
+        console.log(
+            indent + `Node ${this.kind} ${this.layout.type}:`,
+            this.layout.rect!.x,
+            this.layout.rect!.y,
+            this.layout.rect!.width,
+            this.layout.rect!.height,
+        );
         this.layout.children.forEach((child) => {
+            console.log(indent + `${(child as any).size}:`);
             child.node.debug(level + 1);
             if (child.node.parent !== this) {
                 console.log(indent + `  ** PARENT DOES NOT MATCH **`);
             }
-            // console.log(indent + `  (${(child as any).size})`);
         });
     }
-
 
     insertWindow(window: Window, index?: number): void {
         const node = new WindowNode(this, window);

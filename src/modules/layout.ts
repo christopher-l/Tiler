@@ -231,11 +231,13 @@ export class RootLayout {
         windowNode: WindowNode,
         direction: Direction,
     ): boolean {
-        console.log('try _insertIntoChildByDirection');
+        console.log('try _insertIntoSiblingByDirection');
         const child = node.parent?.layout.getChildByDirection(node, direction);
-        // TODO: Also insert into other layouts
-        if (child && node.parent!.layout.type !== this.config.defaultLayout) {
-            console.log('do _insertIntoChildByDirection', windowNode.window.get_id(), direction);
+        if (
+            child &&
+            (node.parent!.layout.type !== this.config.defaultLayout || child.kind === 'layout')
+        ) {
+            console.log('do _insertIntoSiblingByDirection', windowNode.window.get_id(), direction);
             this._removeTilingWindow(windowNode.window);
             this._insertUnderNode(windowNode.window, child);
             // Crash when creating 3 windows, moving one right and left again.
