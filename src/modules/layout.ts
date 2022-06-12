@@ -303,7 +303,9 @@ export class RootLayout {
         this._removeSingleChildLayout(newNode);
         this._removeSingleChildLayout(windowParent);
         if (parent.parent && isSplitNode(parent.parent)) {
-            parent.parent.layout.resizeChild(parent, 2);
+            if (parent.parent.layout.type === parent.layout.type) {
+                parent.parent.layout.resizeChild(parent, 2);
+            }
             this._homogenize(parent.parent);
             this._markForUpdate(parent.parent);
         } else {
@@ -581,11 +583,12 @@ class StackingLayout extends BaseLayout {
     }
 
     updatePositionAndSize(): void {
+        const rect = this.rect;
         const STACKING_OFFSET = 10;
-        const height = this.rect.height - (this.children.length - 1) * STACKING_OFFSET;
+        const height = rect.height - (this.children.length - 1) * STACKING_OFFSET;
         this.children.forEach((child, index) => {
-            const y = this.rect.y + index * STACKING_OFFSET;
-            resizeWindow(child.node.window, { ...this.rect, y, height });
+            const y = rect.y + index * STACKING_OFFSET;
+            resizeWindow(child.node.window, { x: rect.x, y, width: rect.width, height });
         });
     }
 
@@ -634,6 +637,7 @@ function resizeWindow(
     { x, y, width, height }: { x: number; y: number; width: number; height: number },
 ) {
     if ([x, y, width, height].some(isNaN)) {
+        console.log('rect', x, y, width, height);
         throw new Error('Called resizeWindow with NaN');
     }
     window.move_resize_frame(false, x, y, width, height);
