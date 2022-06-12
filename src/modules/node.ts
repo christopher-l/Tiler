@@ -1,10 +1,13 @@
 import { TilingLayout } from 'modules/layout';
 import { Window } from 'types/extended/window';
 
+let nextNodeId = 0;
+
 abstract class BaseNode {
     abstract kind: 'layout' | 'window';
     abstract parent: LayoutNode | null;
     lastFocusTime?: number;
+    id = nextNodeId++;
 
     isDescendentOf(node: LayoutNode): boolean {
         let parent = this.parent;
@@ -28,7 +31,7 @@ export class LayoutNode<T extends TilingLayout = TilingLayout> extends BaseNode 
     debug(level = 0): void {
         const indent = ' '.repeat(level * 2);
         console.log(
-            indent + `Node ${this.kind} ${this.layout.type}:`,
+            indent + `Node ${this.id} ${this.kind} ${this.layout.type}:`,
             this.layout.rect!.x,
             this.layout.rect!.y,
             this.layout.rect!.width,

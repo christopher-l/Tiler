@@ -305,6 +305,11 @@ export class RootLayout {
         if (parent.parent && isSplitNode(parent.parent)) {
             console.log('before _homogenize');
             parent.parent.debug();
+            // if (parent.parent.layout.type === parent.layout.type) {
+                const index = parent.parent.layout.getChildIndex(parent);
+                parent.parent.layout.children[index].size *= 2;
+                normalizeSizes(parent.parent.layout.children);
+            // }
             this._homogenize(parent.parent);
             this._markForUpdate(parent.parent);
         } else {
@@ -428,7 +433,7 @@ abstract class BaseLayout {
         if (indexDiff === null) {
             return null;
         }
-        const index = this._getChildIndex(node);
+        const index = this.getChildIndex(node);
         const newIndex = index + indexDiff;
         if (newIndex < 0 || newIndex >= this.children.length) {
             return null;
@@ -441,7 +446,7 @@ abstract class BaseLayout {
         if (indexDiff === null) {
             return false;
         }
-        const index = this._getChildIndex(node);
+        const index = this.getChildIndex(node);
         const newIndex = index + indexDiff;
         if (newIndex < 0 || newIndex >= this.children.length) {
             return false;
@@ -480,7 +485,7 @@ abstract class BaseLayout {
 
     abstract insertNode(node: WindowNode, position?: number): void;
 
-    protected _getChildIndex(node: Node): number {
+    getChildIndex(node: Node): number {
         const index = this.children.findIndex((child) => child.node === node);
         if (index < 0) {
             throw new Error('node not in layout');
@@ -516,7 +521,7 @@ class SplitLayout extends BaseLayout {
     }
 
     removeWindow(window: Window): void {
-        const index = this._getChildIndex(window.tilerLayoutState!.node!);
+        const index = this.getChildIndex(window.tilerLayoutState!.node!);
         this.children.splice(index, 1);
         normalizeSizes(this.children);
     }
@@ -571,7 +576,7 @@ class StackingLayout extends BaseLayout {
     }
 
     removeWindow(window: Window): void {
-        const index = this._getChildIndex(window.tilerLayoutState!.node!);
+        const index = this.getChildIndex(window.tilerLayoutState!.node!);
         this.children.splice(index, 1);
     }
 
