@@ -15,13 +15,18 @@ export interface LayoutConfig {
 
 export class RootLayout {
     // floating: Window[] = [];
-    tiling = new LayoutNode(null, createTilingLayout(this.config.defaultLayout));
+    tiling: LayoutNode;
 
     constructor(public config: LayoutConfig) {
-        this.tiling.layout.updatePositionAndSize(
-            subtractGaps(this.config.rootRect, this.config.gapSize),
-            config.gapSize,
+        this.tiling = new LayoutNode(
+            null,
+            createTilingLayout(
+                this.config.defaultLayout,
+                subtractGaps(this.config.rootRect, this.config.gapSize),
+                this.config.gapSize,
+            ),
         );
+        this.tiling.layout.updatePositionAndSize();
     }
 
     // TODO: call this
@@ -124,12 +129,16 @@ export class RootLayout {
     private _insertUnderWindowNode(window: Window, node: WindowNode): void {
         const nodeWindow = node.window;
         const index = node.parent.layout.children.findIndex((child) => child.node === node);
-        const newLayout = createTilingLayout(this.config.defaultLayout);
+        const newLayout = createTilingLayout(
+            this.config.defaultLayout,
+            nodeWindow.get_frame_rect(),
+            this.config.gapSize,
+        );
         const newNode = new LayoutNode(node.parent, newLayout);
         newNode.insertWindow(nodeWindow);
         newNode.insertWindow(window);
         node.parent.layout.children[index].node = newNode;
-        newLayout.updatePositionAndSize(nodeWindow.get_frame_rect(), this.config.gapSize);
+        newLayout.updatePositionAndSize();
     }
 
     /**
@@ -259,9 +268,8 @@ export class RootLayout {
         // remove window from tree
         const windowParent = windowNode.parent;
         windowParent.layout.removeWindow(windowNode.window);
-        const rect = parent.layout.rect!;
         // create new split layout (to replace parent.layout with)
-        const newLayout = new SplitLayout(layoutType);
+        const newLayout = new SplitLayout(layoutType, parent.layout.rect, this.config.gapSize);
         // create new node to hold original parent layout
         const newNode = new LayoutNode(parent, parent.layout);
         // attach newNode to newLayout
@@ -279,7 +287,7 @@ export class RootLayout {
             this._homogenize(parent.parent);
             parent.parent.layout.updatePositionAndSize();
         } else {
-            parent.layout.updatePositionAndSize(rect, this.config.gapSize);
+            parent.layout.updatePositionAndSize();
         }
         this.tiling.debug();
     }
@@ -366,23 +374,27 @@ export class RootLayout {
     }
 }
 
-export function createTilingLayout(type: TilingType): TilingLayout {
+export function createTilingLayout(
+    type: TilingType,
+    rect: Meta.Rectangle,
+    gapSize: number,
+): TilingLayout {
     switch (type) {
         case 'split-h':
         case 'split-v':
-            return new SplitLayout(type);
+            return new SplitLayout(type, rect, gapSize);
         case 'stacking':
-            return new StackingLayout();
+            return new StackingLayout(rect, gapSize);
     }
 }
 
 export type TilingLayout = SplitLayout | StackingLayout;
 
 abstract class BaseLayout {
-    rect?: Meta.Rectangle;
-    gapSize?: number;
     abstract children: { node: Node }[];
     abstract type: 'split-v' | 'split-h' | 'stacking';
+
+    constructor(public rect: Meta.Rectangle, public gapSize: number) {}
 
     getChildByDirection(node: Node, direction: Direction): Node | null {
         const indexDiff = this._getIndexDiff(direction);
@@ -464,8 +476,8 @@ class SplitLayout extends BaseLayout {
         node: Node;
     }[] = [];
 
-    constructor(public type: 'split-h' | 'split-v') {
-        super();
+    constructor(public type: 'split-h' | 'split-v', rect: Meta.Rectangle, gapSize: number) {
+        super(rect, gapSize);
     }
 
     insertNode(node: Node, position = this.children.length): void {
@@ -483,8 +495,8 @@ class SplitLayout extends BaseLayout {
     }
 
     updatePositionAndSize(
-        rect: Meta.Rectangle = this.rect!,
-        gapSize: number = this.gapSize!,
+        rect: Meta.Rectangle = this.rect,
+        gapSize: number = this.gapSize,
     ): void {
         this.rect = rect;
         this.gapSize = gapSize;
@@ -543,7 +555,7 @@ class StackingLayout extends BaseLayout {
         this.children.splice(index, 1);
     }
 
-    updatePositionAndSize(rect: Meta.Rectangle = this.rect!): void {
+    updatePositionAndSize(rect: Meta.Rectangle = this.rect): void {
         this.rect = rect;
         const STACKING_OFFSET = 10;
         const height = rect.height - (this.children.length - 1) * STACKING_OFFSET;
