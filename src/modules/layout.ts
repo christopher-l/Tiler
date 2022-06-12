@@ -271,9 +271,6 @@ export class RootLayout {
             console.log('do _insertIntoSiblingByDirection', windowNode.window.get_id(), direction);
             this._removeTilingWindow(windowNode.window);
             this._insertUnderNode(windowNode.window, child);
-            // Crash when creating 3 windows, moving one right and left again.
-            // this._removeSingleChildLayout(parent);
-            this._markForUpdate(node.parent!);
             this.tiling.debug();
             return true;
         } else {
@@ -306,6 +303,8 @@ export class RootLayout {
         this._removeSingleChildLayout(newNode);
         this._removeSingleChildLayout(windowParent);
         if (parent.parent && isSplitNode(parent.parent)) {
+            console.log('before _homogenize');
+            parent.parent.debug();
             this._homogenize(parent.parent);
             this._markForUpdate(parent.parent);
         } else {
@@ -331,6 +330,9 @@ export class RootLayout {
         parent.layout.removeWindow(window);
         window.tilerLayoutState!.node = null;
         this._removeSingleChildLayout(parent);
+        if (parent === this.tiling || parent.isDescendentOf(this.tiling)) {
+            this._markForUpdate(parent);
+        }
     }
 
     /** If there is only one child left in the layout, replace the layout by the child node. */
@@ -341,20 +343,18 @@ export class RootLayout {
                 if (childNode.kind === 'layout') {
                     this.tiling = childNode;
                     childNode.parent = null;
+                    childNode.layout.rect = node.layout.rect;
+                    this._markForUpdate(childNode);
                 }
             } else {
                 this._replaceLayout(node, childNode);
             }
-            // if (node.layout.children[0].node.kind === 'layout') {
-            //     const rect = node.layout.rect;
-            //     node.layout = node.layout.children[0].node.layout;
-            //     node.layout.rect = rect;
-            //     node.layout.children.forEach((child) => (child.node.parent = node));
-            // } else if (node.parent) {
-            // }
         }
     }
 
+    /**
+     * Replaces `node` with `newNode` in the parent layout of `node`.
+     */
     private _replaceLayout(node: LayoutNode, newNode: Node): void {
         const parentLayout = node.parent!.layout;
         const parentIndex = parentLayout.children.findIndex((child) => child.node === node);
@@ -362,6 +362,11 @@ export class RootLayout {
         newNode.parent = node.parent;
         if (newNode.kind === 'layout' && isSplitNode(node.parent!)) {
             this._homogenize(node.parent!);
+        }
+        if (newNode.kind === 'layout') {
+            this._markForUpdate(newNode);
+        } else {
+            this._markForUpdate(newNode.parent);
         }
     }
 
