@@ -1,6 +1,7 @@
 import { Meta } from 'imports/gi';
 import { LayoutNode, Node, WindowNode } from 'modules/node';
 import { Window } from 'types/extended/window';
+import { DebouncingNotifier } from 'utils/DebouncingNotifier';
 
 export type WindowState = 'floating' | 'tiling';
 export type TilingType = 'split-h' | 'split-v' | 'stacking';
@@ -16,6 +17,8 @@ export interface LayoutConfig {
 export class RootLayout {
     // floating: Window[] = [];
     tiling: LayoutNode;
+    private _nodesToUpdate: LayoutNode[] = [];
+    private _updateNotifier = new DebouncingNotifier();
 
     constructor(public config: LayoutConfig) {
         this.tiling = new LayoutNode(
@@ -27,6 +30,7 @@ export class RootLayout {
             ),
         );
         this.tiling.layout.updatePositionAndSize();
+        this._updateNotifier.subscribe(() => this._updateNodes());
     }
 
     // TODO: call this
@@ -60,7 +64,7 @@ export class RootLayout {
         }
         window.tilerLayoutState!.rootLayout = null;
         if (parent) {
-            parent.layout.updatePositionAndSize();
+            this._markForUpdate(parent);
         }
     }
 
@@ -92,12 +96,30 @@ export class RootLayout {
         return true;
     }
 
+    private _markForUpdate(node: LayoutNode): void {
+        if (!this._nodesToUpdate.includes(node)) {
+            this._nodesToUpdate.push(node);
+        }
+        this._updateNotifier.notify();
+    }
+
     onWindowFocus(window: Window): void {
         let node: Node | null | undefined = window.tilerLayoutState?.node;
         while (node) {
             node.lastFocusTime = global.get_current_time();
             node = node.parent;
         }
+    }
+
+    private _updateNodes(): void {
+        this._nodesToUpdate
+            .filter(
+                // Only update the highest node in any subtree since the lower nodes will be updated
+                // automatically by updating their ancestor.
+                (node) => !this._nodesToUpdate.some((otherNode) => node.isDescendentOf(otherNode)),
+            )
+            .forEach((node) => node.layout.updatePositionAndSize());
+        this._nodesToUpdate = [];
     }
 
     private _insertUnderNode(window: Window, node: Node = this.tiling): void {
@@ -118,7 +140,7 @@ export class RootLayout {
             parent.layout.type === this.config.defaultLayout
         ) {
             parent.insertWindow(window, index + 1);
-            parent.layout.updatePositionAndSize();
+            this._markForUpdate(parent);
         } else {
             this._insertUnderWindowNode(window, node);
         }
@@ -138,7 +160,7 @@ export class RootLayout {
         newNode.insertWindow(nodeWindow);
         newNode.insertWindow(window);
         node.parent.layout.children[index].node = newNode;
-        newLayout.updatePositionAndSize();
+        this._markForUpdate(newNode);
     }
 
     /**
@@ -211,7 +233,7 @@ export class RootLayout {
         const couldMoveWithinLayout = windowNode.parent.layout.moveChild(windowNode, direction);
         if (couldMoveWithinLayout) {
             console.log('move within layout');
-            windowNode.parent.layout.updatePositionAndSize();
+            this._markForUpdate(windowNode.parent);
             this.tiling.debug();
             return true;
         }
@@ -251,7 +273,7 @@ export class RootLayout {
             this._insertUnderNode(windowNode.window, child);
             // Crash when creating 3 windows, moving one right and left again.
             // this._removeSingleChildLayout(parent);
-            node.parent!.layout.updatePositionAndSize();
+            this._markForUpdate(node.parent!);
             this.tiling.debug();
             return true;
         } else {
@@ -285,9 +307,9 @@ export class RootLayout {
         this._removeSingleChildLayout(windowParent);
         if (parent.parent && isSplitNode(parent.parent)) {
             this._homogenize(parent.parent);
-            parent.parent.layout.updatePositionAndSize();
+            this._markForUpdate(parent.parent);
         } else {
-            parent.layout.updatePositionAndSize();
+            this._markForUpdate(parent);
         }
         this.tiling.debug();
     }
@@ -494,33 +516,26 @@ class SplitLayout extends BaseLayout {
         normalizeSizes(this.children);
     }
 
-    updatePositionAndSize(
-        rect: Meta.Rectangle = this.rect,
-        gapSize: number = this.gapSize,
-    ): void {
-        this.rect = rect;
-        this.gapSize = gapSize;
+    updatePositionAndSize(): void {
         let offset = 0;
         let sizeAcc = 0;
-        const totalTiledSize = this.type === 'split-h' ? rect.width : rect.height;
+        const totalTiledSize = this.type === 'split-h' ? this.rect.width : this.rect.height;
         this.children.forEach((child, index) => {
             sizeAcc += child.size;
             const tileStart = offset;
             const tileEnd =
-                (totalTiledSize - (this.children.length - 1 - index) * gapSize) * sizeAcc;
-            const x = this.type === 'split-h' ? tileStart + rect.x : rect.x;
-            const y = this.type === 'split-v' ? tileStart + rect.y : rect.y;
-            const width = this.type === 'split-h' ? tileEnd - tileStart : rect.width;
-            const height = this.type === 'split-v' ? tileEnd - tileStart : rect.height;
+                (totalTiledSize - (this.children.length - 1 - index) * this.gapSize) * sizeAcc;
+            const x = this.type === 'split-h' ? tileStart + this.rect.x : this.rect.x;
+            const y = this.type === 'split-v' ? tileStart + this.rect.y : this.rect.y;
+            const width = this.type === 'split-h' ? tileEnd - tileStart : this.rect.width;
+            const height = this.type === 'split-v' ? tileEnd - tileStart : this.rect.height;
             if (child.node.kind === 'window') {
                 resizeWindow(child.node.window, { x, y, width, height });
             } else {
-                child.node.layout.updatePositionAndSize(
-                    createRectangle(x, y, width, height),
-                    gapSize,
-                );
+                child.node.layout.rect = createRectangle(x, y, width, height);
+                child.node.layout.updatePositionAndSize();
             }
-            offset = tileEnd + gapSize;
+            offset = tileEnd + this.gapSize;
         });
     }
 
@@ -555,13 +570,12 @@ class StackingLayout extends BaseLayout {
         this.children.splice(index, 1);
     }
 
-    updatePositionAndSize(rect: Meta.Rectangle = this.rect): void {
-        this.rect = rect;
+    updatePositionAndSize(): void {
         const STACKING_OFFSET = 10;
-        const height = rect.height - (this.children.length - 1) * STACKING_OFFSET;
+        const height = this.rect.height - (this.children.length - 1) * STACKING_OFFSET;
         this.children.forEach((child, index) => {
-            const y = rect.y + index * STACKING_OFFSET;
-            resizeWindow(child.node.window, { ...rect, y });
+            const y = this.rect.y + index * STACKING_OFFSET;
+            resizeWindow(child.node.window, { ...this.rect, y, height });
         });
     }
 

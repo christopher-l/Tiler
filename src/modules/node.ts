@@ -1,10 +1,21 @@
-import { createTilingLayout, TilingLayout, TilingType } from 'modules/layout';
+import { TilingLayout } from 'modules/layout';
 import { Window } from 'types/extended/window';
 
 abstract class BaseNode {
     abstract kind: 'layout' | 'window';
     abstract parent: LayoutNode | null;
     lastFocusTime?: number;
+
+    isDescendentOf(node: LayoutNode): boolean {
+        let parent = this.parent;
+        while (parent) {
+            if (parent === node) {
+                return true;
+            }
+            parent = parent.parent;
+        }
+        return false;
+    }
 }
 
 export class LayoutNode<T extends TilingLayout = TilingLayout> extends BaseNode {
