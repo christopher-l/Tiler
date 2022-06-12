@@ -303,13 +303,7 @@ export class RootLayout {
         this._removeSingleChildLayout(newNode);
         this._removeSingleChildLayout(windowParent);
         if (parent.parent && isSplitNode(parent.parent)) {
-            console.log('before _homogenize');
-            parent.parent.debug();
-            // if (parent.parent.layout.type === parent.layout.type) {
-                const index = parent.parent.layout.getChildIndex(parent);
-                parent.parent.layout.children[index].size *= 2;
-                normalizeSizes(parent.parent.layout.children);
-            // }
+            parent.parent.layout.resizeChild(parent, 2);
             this._homogenize(parent.parent);
             this._markForUpdate(parent.parent);
         } else {
@@ -523,6 +517,12 @@ class SplitLayout extends BaseLayout {
     removeWindow(window: Window): void {
         const index = this.getChildIndex(window.tilerLayoutState!.node!);
         this.children.splice(index, 1);
+        normalizeSizes(this.children);
+    }
+
+    resizeChild(node: Node, factor: number): void {
+        const index = this.getChildIndex(node);
+        this.children[index].size *= factor;
         normalizeSizes(this.children);
     }
 
