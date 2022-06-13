@@ -44,9 +44,19 @@ export class WindowTracker {
         const display = global.display;
         this._displaySignals = [
             display.connect('window-created', (_, window) => this._trackWindow(window)),
-            display.connect('window-entered-monitor', (_, monitor, window) =>
-                (window as Window).tilerTracking?.updateNotifier.notify(),
+            display.connect('window-entered-monitor', (_, monitor, window: Window) =>
+                window.tilerTracking?.updateNotifier.notify(),
             ),
+            display.connect('grab-op-begin', (_, window: Window, grabOp) => {
+                if (window.tilerLayoutState) {
+                    window.tilerLayoutState.currentGrabOp = grabOp;
+                }
+            }),
+            display.connect('grab-op-end', (_, window: Window) => {
+                if (window.tilerLayoutState) {
+                    delete window.tilerLayoutState.currentGrabOp;
+                }
+            }),
         ];
     }
 

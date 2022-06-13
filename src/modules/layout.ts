@@ -2,6 +2,12 @@ import { Meta } from 'imports/gi';
 import { LayoutNode, Node, WindowNode } from 'modules/node';
 import { Window } from 'types/extended/window';
 import { DebouncingNotifier } from 'utils/DebouncingNotifier';
+import {
+    getHorizontalDirection,
+    getOrientation,
+    getVerticalDirection,
+    schedule,
+} from 'utils/utils';
 
 export type WindowState = 'floating' | 'tiling';
 export type TilingType = 'split-h' | 'split-v' | 'stacking';
@@ -76,7 +82,7 @@ export class RootLayout {
         // this.floating.push(window);
         if (window.tilerLayoutState!.restoreRect) {
             const rect = window.tilerLayoutState!.restoreRect;
-            resizeWindow(window, rect);
+            window.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
             window.tilerLayoutState!.restoreRect = null;
         }
     }
@@ -96,13 +102,6 @@ export class RootLayout {
         return true;
     }
 
-    private _markForUpdate(node: LayoutNode): void {
-        if (!this._nodesToUpdate.includes(node)) {
-            this._nodesToUpdate.push(node);
-        }
-        this._updateNotifier.notify();
-    }
-
     onWindowFocus(window: Window): void {
         let node: Node | null | undefined = window.tilerLayoutState?.node;
         while (node) {
@@ -114,10 +113,40 @@ export class RootLayout {
     onWindowSizeChanged(window: Window): void {
         // Only handle size-changed events of the focused window since we change the sizes of other
         // non-focused windows in the process.
-        if (!window.has_focus) {
+        if (!window.has_focus || !window.tilerLayoutState?.node) {
             return;
         }
         const grabOp = global.display.get_grab_op();
+        const horizontal = getHorizontalDirection(grabOp);
+        if (horizontal) {
+            this._handleResize(window.tilerLayoutState?.node, horizontal);
+        }
+        const vertical = getVerticalDirection(grabOp);
+        if (vertical) {
+            this._handleResize(window.tilerLayoutState?.node, vertical);
+        }
+    }
+
+    private _handleResize(windowNode: WindowNode, direction: Direction): void {
+        const orientation = getOrientation(direction);
+        const dimension = orientation === 'horizontal' ? 'width' : 'height';
+        const delta = windowNode.window.get_frame_rect()[dimension] - windowNode.rect[dimension];
+        const splitAncestor = windowNode.findAncestor(
+            (node): node is LayoutNode<SplitLayout> =>
+                isSplitLayout(node.layout) &&
+                node.layout.canResizeInDirection(windowNode, direction),
+        );
+        if (splitAncestor) {
+            splitAncestor.layout.resizeInDirection(windowNode, direction, delta);
+            this._markForUpdate(splitAncestor);
+        }
+    }
+
+    private _markForUpdate(node: LayoutNode): void {
+        if (!this._nodesToUpdate.includes(node)) {
+            this._nodesToUpdate.push(node);
+        }
+        this._updateNotifier.notify();
     }
 
     private _updateNodes(): void {
@@ -499,6 +528,18 @@ abstract class BaseLayout {
         }
     }
 
+    getChildIndexForDescendent(descendent: Node): number {
+        let child = descendent;
+        while (!this.children.some(({ node }) => node === child)) {
+            if (child.parent) {
+                child = child.parent;
+            } else {
+                throw new Error('node not in layout');
+            }
+        }
+        return this.getChildIndex(child);
+    }
+
     protected abstract _getIndexDiff(direction: Direction): number | null;
 }
 
@@ -522,42 +563,78 @@ class SplitLayout extends BaseLayout {
             size: 1 / (this.children.length || 1),
             node,
         });
-        normalizeSizes(this.children);
+        this._normalizeSizes();
     }
 
     removeWindow(window: Window): void {
         const index = this.getChildIndex(window.tilerLayoutState!.node!);
         this.children.splice(index, 1);
-        normalizeSizes(this.children);
+        this._normalizeSizes();
     }
 
     resizeChild(node: Node, factor: number): void {
         const index = this.getChildIndex(node);
         this.children[index].size *= factor;
-        normalizeSizes(this.children);
+        this._normalizeSizes();
     }
 
     updatePositionAndSize(): void {
         let offset = 0;
-        let sizeAcc = 0;
-        const totalTiledSize = this.type === 'split-h' ? this.rect.width : this.rect.height;
-        this.children.forEach((child, index) => {
-            sizeAcc += child.size;
+        const usableTiledSize = this._getUsableTiledSize();
+        this.children.forEach((child) => {
             const tileStart = offset;
-            const tileEnd =
-                (totalTiledSize - (this.children.length - 1 - index) * this.gapSize) * sizeAcc;
+            const tiledSize = usableTiledSize * child.size;
             const x = this.type === 'split-h' ? tileStart + this.rect.x : this.rect.x;
             const y = this.type === 'split-v' ? tileStart + this.rect.y : this.rect.y;
-            const width = this.type === 'split-h' ? tileEnd - tileStart : this.rect.width;
-            const height = this.type === 'split-v' ? tileEnd - tileStart : this.rect.height;
+            const width = this.type === 'split-h' ? tiledSize : this.rect.width;
+            const height = this.type === 'split-v' ? tiledSize : this.rect.height;
             if (child.node.kind === 'window') {
-                resizeWindow(child.node.window, { x, y, width, height });
+                child.node.resize({ x, y, width, height });
             } else {
                 child.node.layout.rect = createRectangle(x, y, width, height);
                 child.node.layout.updatePositionAndSize();
             }
-            offset = tileEnd + this.gapSize;
+            offset = tileStart + tiledSize + this.gapSize;
         });
+    }
+
+    private _getUsableTiledSize(): number {
+        const totalTiledSize = this.type === 'split-h' ? this.rect.width : this.rect.height;
+        return totalTiledSize - (this.children.length - 1) * this.gapSize;
+    }
+
+    canResizeInDirection(descendent: Node, direction: Direction): boolean {
+        this.children.find;
+        const index = this.getChildIndexForDescendent(descendent);
+        if (
+            (this.type === 'split-v' && direction === 'up') ||
+            (this.type === 'split-h' && direction === 'left')
+        ) {
+            return index > 0;
+        } else if (
+            (this.type === 'split-v' && direction === 'down') ||
+            (this.type === 'split-h' && direction === 'right')
+        ) {
+            return index < this.children.length - 1;
+        } else {
+            return false;
+        }
+    }
+
+    resizeInDirection(descendent: Node, direction: Direction, delta: number): void {
+        const index = this.getChildIndexForDescendent(descendent);
+        const usableTiledSize = this._getUsableTiledSize();
+        const deltaPercent = delta / usableTiledSize;
+        const affectedChildren = this.children.filter((_, childIndex) => {
+            if (['up', 'left'].includes(direction)) {
+                return childIndex < index;
+            } else {
+                return childIndex > index;
+            }
+        });
+        this.children[index].size += deltaPercent;
+        affectedChildren.forEach((child) => (child.size -= deltaPercent / affectedChildren.length));
+        this._normalizeSizes();
     }
 
     protected _getIndexDiff(direction: Direction): number | null {
@@ -575,6 +652,11 @@ class SplitLayout extends BaseLayout {
                     return direction === 'left' ? -1 : 1;
                 }
         }
+    }
+
+    private _normalizeSizes(): void {
+        const sum = this.children.reduce((sum, { size }) => sum + size, 0);
+        this.children.forEach((child) => (child.size /= sum));
     }
 }
 
@@ -597,7 +679,7 @@ class StackingLayout extends BaseLayout {
         const height = rect.height - (this.children.length - 1) * STACKING_OFFSET;
         this.children.forEach((child, index) => {
             const y = rect.y + index * STACKING_OFFSET;
-            resizeWindow(child.node.window, { x: rect.x, y, width: rect.width, height });
+            child.node.resize({ x: rect.x, y, width: rect.width, height });
         });
     }
 
@@ -634,20 +716,4 @@ function subtractGaps(rect: Meta.Rectangle, gapSize: number): Meta.Rectangle {
     result.width = rect.width - gapSize * 2;
     result.height = rect.height - gapSize * 2;
     return result;
-}
-
-function normalizeSizes(children: { size: number }[]): void {
-    const sum = children.reduce((sum, { size }) => sum + size, 0);
-    children.forEach((child) => (child.size /= sum));
-}
-
-function resizeWindow(
-    window: Window,
-    { x, y, width, height }: { x: number; y: number; width: number; height: number },
-) {
-    if ([x, y, width, height].some(isNaN)) {
-        console.log('rect', x, y, width, height);
-        throw new Error('Called resizeWindow with NaN');
-    }
-    window.move_resize_frame(false, x, y, width, height);
 }

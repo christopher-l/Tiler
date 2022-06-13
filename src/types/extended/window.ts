@@ -8,6 +8,7 @@ export type WindowTilingState = {
     state?: WindowState;
     node?: WindowNode | null; // Set when state: 'tiling'
     restoreRect?: Meta.Rectangle | null;
+    currentGrabOp?: Meta.GrabOp;
 };
 
 export type TilingWindowState = {};

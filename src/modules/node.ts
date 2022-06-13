@@ -1,5 +1,6 @@
 import { TilingLayout } from 'modules/layout';
 import { Window } from 'types/extended/window';
+import { Meta } from 'imports/gi';
 
 let nextNodeId = 0;
 
@@ -18,6 +19,16 @@ abstract class BaseNode {
             parent = parent.parent;
         }
         return false;
+    }
+
+    findAncestor<S extends LayoutNode>(predicate: (node: LayoutNode) => node is S): S | undefined {
+        let ancestor = this.parent;
+        while (ancestor) {
+            if (predicate(ancestor)) {
+                return ancestor;
+            }
+            ancestor = ancestor.parent;
+        }
     }
 }
 
@@ -56,14 +67,29 @@ export class LayoutNode<T extends TilingLayout = TilingLayout> extends BaseNode 
 
 export class WindowNode extends BaseNode {
     readonly kind = 'window';
+    rect: Meta.Rectangle;
 
     constructor(public parent: LayoutNode, public window: Window) {
         super();
+        this.rect = window.get_frame_rect();
     }
 
     debug(level = 0): void {
         const indent = ' '.repeat(level * 2);
         console.log(indent + `Node ${this.kind} ${this.window.get_id()}`);
+    }
+
+    resize({ x, y, width, height }: { x: number; y: number; width: number; height: number }): void {
+        if (this.window.tilerLayoutState?.currentGrabOp) {
+            return;
+        }
+        if ([x, y, width, height].some(isNaN)) {
+            throw new Error(
+                `Called resizeWindow x: ${x}, y: ${y}, width: ${width}, height: ${height}`,
+            );
+        }
+        this.window.move_resize_frame(false, x, y, width, height);
+        this.rect = this.window.get_frame_rect();
     }
 
     // removeFromTree(): void {

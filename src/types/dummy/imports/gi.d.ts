@@ -36,6 +36,7 @@ export namespace Meta {
     type Rectangle = any;
     type Workspace = any;
     type Display = any;
+    type GrabOp = any;
 }
 
 export namespace Gtk {
