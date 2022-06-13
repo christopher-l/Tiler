@@ -118,7 +118,6 @@ export class RootLayout {
         if (!windowNode || !grabOp) {
             return;
         }
-        console.log('onWindowSizeChanged');
         const horizontal = getHorizontalDirection(grabOp);
         if (horizontal) {
             this._handleResize(windowNode, horizontal);
@@ -126,6 +125,15 @@ export class RootLayout {
         const vertical = getVerticalDirection(grabOp);
         if (vertical) {
             this._handleResize(windowNode, vertical);
+        }
+    }
+
+    onDragEnd(window: Window): void {
+        const windowNode = window.tilerLayoutState?.node;
+        // In case the user resized an outer edge that could not be resized through a layout, we
+        // reset the resized window to a valid position.
+        if (windowNode) {
+            this._markForUpdate(windowNode.parent);
         }
     }
 

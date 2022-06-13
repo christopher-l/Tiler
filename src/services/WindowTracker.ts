@@ -1,8 +1,8 @@
+import { GLib } from 'imports/gi';
 import { LayoutManager } from 'services/LayoutManager';
 import { Settings } from 'services/Settings';
 import { Window } from 'types/extended/window';
 import { DebouncingNotifier } from 'utils/DebouncingNotifier';
-import { GLib } from 'imports/gi';
 import { timeout } from 'utils/utils';
 
 // Some code adapted from
@@ -49,13 +49,14 @@ export class WindowTracker {
                 window.tilerTracking?.updateNotifier.notify(),
             ),
             display.connect('grab-op-begin', (_, window: Window, grabOp) => {
-                console.log('grab-op-begin');
                 if (window.tilerLayoutState) {
                     window.tilerLayoutState.currentGrabOp = grabOp;
                 }
             }),
             display.connect('grab-op-end', (_, window: Window, grabOp) => {
-                console.log('grab-op-end');
+                window.tilerLayoutState?.rootLayout?.onDragEnd(window);
+                // Shortly keep `currentGrabOp` since some size-changed events might come in after
+                // `grab-op-end`.
                 timeout(() => {
                     if (window.tilerLayoutState?.currentGrabOp) {
                         delete window.tilerLayoutState.currentGrabOp;
