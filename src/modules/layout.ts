@@ -43,7 +43,8 @@ export class RootLayout {
     destroy() {}
 
     insertWindow(window: Window): void {
-        window.tilerLayoutState = { ...(window.tilerLayoutState ?? {}), rootLayout: this };
+        window.tilerLayoutState ??= {};
+        window.tilerLayoutState.rootLayout = this;
         const targetState = this._getTargetState(window);
         switch (targetState) {
             case 'floating':
@@ -59,7 +60,6 @@ export class RootLayout {
     }
 
     removeWindow(window: Window): void {
-        const parent = window.tilerLayoutState!.node!.parent;
         switch (window.tilerLayoutState!.state) {
             case 'floating':
                 this._removeFloatingWindow(window);
@@ -69,9 +69,6 @@ export class RootLayout {
                 break;
         }
         window.tilerLayoutState!.rootLayout = null;
-        if (parent) {
-            this._markForUpdate(parent);
-        }
     }
 
     floatWindow(window: Window): void {
