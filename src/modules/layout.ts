@@ -114,7 +114,7 @@ export class RootLayout {
         // Only handle size-changed events of the focused window since we change the sizes of other
         // non-focused windows in the process.
         const windowNode = window.tilerLayoutState?.node;
-        if (!window.has_focus || !windowNode) {
+        if (!window.has_focus() || !windowNode) {
             return;
         }
         const grabOp = global.display.get_grab_op();
@@ -133,7 +133,7 @@ export class RootLayout {
         const orientation = getOrientation(direction);
         const dimension = orientation === 'horizontal' ? 'width' : 'height';
         const delta = windowNode.window.get_frame_rect()[dimension] - windowNode.rect[dimension];
-        const splitAncestor = windowNode.findAncestor(
+        const splitAncestor: LayoutNode<SplitLayout> | undefined = windowNode.findAncestor(
             (node): node is LayoutNode<SplitLayout> =>
                 isSplitLayout(node.layout) &&
                 node.layout.canResizeInDirection(windowNode, direction),

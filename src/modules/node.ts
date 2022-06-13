@@ -81,9 +81,9 @@ export class WindowNode extends BaseNode {
     }
 
     resize({ x, y, width, height }: { x: number; y: number; width: number; height: number }): void {
-        if (this.window.tilerLayoutState?.currentGrabOp) {
-            return;
-        }
+        // if (this.window.tilerLayoutState?.currentGrabOp) {
+        //     return;
+        // }
         if ([x, y, width, height].some(isNaN)) {
             throw new Error(
                 `Called resizeWindow x: ${x}, y: ${y}, width: ${width}, height: ${height}`,
