@@ -1,6 +1,7 @@
+import { Meta } from 'imports/gi';
 import { TilingLayout } from 'modules/layout';
 import { Window } from 'types/extended/window';
-import { Meta } from 'imports/gi';
+import { createRectangle } from 'utils/utils';
 
 let nextNodeId = 0;
 
@@ -89,7 +90,7 @@ export class WindowNode extends BaseNode {
             );
         }
         this.window.move_resize_frame(false, x, y, width, height);
-        this.rect = this.window.get_frame_rect();
+        this.rect = createRectangle(x, y, width, height);
     }
 
     // removeFromTree(): void {

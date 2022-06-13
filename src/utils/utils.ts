@@ -40,3 +40,12 @@ export function schedule(action: () => void): void {
         return GLib.SOURCE_REMOVE;
     });
 }
+
+export function createRectangle(x: number, y: number, width: number, height: number): Meta.Rectangle {
+    const rect = new Meta.Rectangle();
+    rect.x = x;
+    rect.y = y;
+    rect.width = width;
+    rect.height = height;
+    return rect;
+}

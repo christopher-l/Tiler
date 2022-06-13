@@ -55,6 +55,9 @@ export class WindowTracker {
             display.connect('grab-op-end', (_, window: Window) => {
                 if (window.tilerLayoutState) {
                     delete window.tilerLayoutState.currentGrabOp;
+                    // if (window.tilerLayoutState.node) {
+                    //     window.tilerLayoutState.node.rect = window.get_frame_rect();
+                    // }
                 }
             }),
         ];

@@ -3,10 +3,10 @@ import { LayoutNode, Node, WindowNode } from 'modules/node';
 import { Window } from 'types/extended/window';
 import { DebouncingNotifier } from 'utils/DebouncingNotifier';
 import {
+    createRectangle,
     getHorizontalDirection,
     getOrientation,
     getVerticalDirection,
-    schedule,
 } from 'utils/utils';
 
 export type WindowState = 'floating' | 'tiling';
@@ -113,18 +113,20 @@ export class RootLayout {
     onWindowSizeChanged(window: Window): void {
         // Only handle size-changed events of the focused window since we change the sizes of other
         // non-focused windows in the process.
-        if (!window.has_focus || !window.tilerLayoutState?.node) {
+        const windowNode = window.tilerLayoutState?.node;
+        if (!window.has_focus || !windowNode) {
             return;
         }
         const grabOp = global.display.get_grab_op();
         const horizontal = getHorizontalDirection(grabOp);
         if (horizontal) {
-            this._handleResize(window.tilerLayoutState?.node, horizontal);
+            this._handleResize(windowNode, horizontal);
         }
         const vertical = getVerticalDirection(grabOp);
         if (vertical) {
-            this._handleResize(window.tilerLayoutState?.node, vertical);
+            this._handleResize(windowNode, vertical);
         }
+        windowNode.rect = windowNode.window.get_frame_rect();
     }
 
     private _handleResize(windowNode: WindowNode, direction: Direction): void {
@@ -622,6 +624,7 @@ class SplitLayout extends BaseLayout {
     }
 
     resizeInDirection(descendent: Node, direction: Direction, delta: number): void {
+        console.log('resizeInDirection', direction, delta);
         const index = this.getChildIndexForDescendent(descendent);
         const usableTiledSize = this._getUsableTiledSize();
         const deltaPercent = delta / usableTiledSize;
@@ -698,15 +701,6 @@ function isSplitLayout(layout: TilingLayout): layout is SplitLayout {
 
 function isSplitNode(node: LayoutNode): node is LayoutNode<SplitLayout> {
     return isSplitLayout(node.layout);
-}
-
-function createRectangle(x: number, y: number, width: number, height: number): Meta.Rectangle {
-    const rect = new Meta.Rectangle();
-    rect.x = x;
-    rect.y = y;
-    rect.width = width;
-    rect.height = height;
-    return rect;
 }
 
 function subtractGaps(rect: Meta.Rectangle, gapSize: number): Meta.Rectangle {
