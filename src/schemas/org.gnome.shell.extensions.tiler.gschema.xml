@@ -13,7 +13,7 @@
                 <choice value="split-v"/>
                 <choice value="stacking"/>
             </choices>
-            <default>"stacking"</default>
+            <default>"split-v"</default>
         </key>
         <key name="default-window-state" type="s">
             <choices>

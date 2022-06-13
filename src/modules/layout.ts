@@ -114,10 +114,11 @@ export class RootLayout {
         // Only handle size-changed events of the focused window since we change the sizes of other
         // non-focused windows in the process.
         const windowNode = window.tilerLayoutState?.node;
-        if (!window.has_focus() || !windowNode) {
+        const grabOp = window.tilerLayoutState?.currentGrabOp;
+        if (!windowNode || !grabOp) {
             return;
         }
-        const grabOp = global.display.get_grab_op();
+        console.log('onWindowSizeChanged');
         const horizontal = getHorizontalDirection(grabOp);
         if (horizontal) {
             this._handleResize(windowNode, horizontal);
@@ -126,7 +127,6 @@ export class RootLayout {
         if (vertical) {
             this._handleResize(windowNode, vertical);
         }
-        windowNode.rect = windowNode.window.get_frame_rect();
     }
 
     private _handleResize(windowNode: WindowNode, direction: Direction): void {

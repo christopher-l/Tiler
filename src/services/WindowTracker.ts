@@ -3,6 +3,7 @@ import { Settings } from 'services/Settings';
 import { Window } from 'types/extended/window';
 import { DebouncingNotifier } from 'utils/DebouncingNotifier';
 import { GLib } from 'imports/gi';
+import { timeout } from 'utils/utils';
 
 // Some code adapted from
 // https://github.com/jmmaranan/forge/blob/7930bf0aa3ef0ac5a1b021a25701bb39897316fd/window.js
@@ -48,17 +49,18 @@ export class WindowTracker {
                 window.tilerTracking?.updateNotifier.notify(),
             ),
             display.connect('grab-op-begin', (_, window: Window, grabOp) => {
+                console.log('grab-op-begin');
                 if (window.tilerLayoutState) {
                     window.tilerLayoutState.currentGrabOp = grabOp;
                 }
             }),
-            display.connect('grab-op-end', (_, window: Window) => {
-                if (window.tilerLayoutState) {
-                    delete window.tilerLayoutState.currentGrabOp;
-                    // if (window.tilerLayoutState.node) {
-                    //     window.tilerLayoutState.node.rect = window.get_frame_rect();
-                    // }
-                }
+            display.connect('grab-op-end', (_, window: Window, grabOp) => {
+                console.log('grab-op-end');
+                timeout(() => {
+                    if (window.tilerLayoutState?.currentGrabOp) {
+                        delete window.tilerLayoutState.currentGrabOp;
+                    }
+                }, 100);
             }),
         ];
     }

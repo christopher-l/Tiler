@@ -34,8 +34,8 @@ export function getOrientation(direction: Direction): Orientation {
     }
 }
 
-export function schedule(action: () => void): void {
-    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 0, () => {
+export function timeout(action: () => void, delayMs = 0): void {
+    GLib.timeout_add(GLib.PRIORITY_DEFAULT, delayMs, () => {
         action();
         return GLib.SOURCE_REMOVE;
     });
