@@ -69,6 +69,8 @@ export class LayoutNode<T extends TilingLayout = TilingLayout> extends BaseNode 
 export class WindowNode extends BaseNode {
     readonly kind = 'window';
     rect: Meta.Rectangle;
+    /** Whether the window is currently being resized by us. */
+    resizing = false;
 
     constructor(public parent: LayoutNode, public window: Window) {
         super();
@@ -81,6 +83,18 @@ export class WindowNode extends BaseNode {
     }
 
     resize({ x, y, width, height }: { x: number; y: number; width: number; height: number }): void {
+        const currentFrame = this.window.get_frame_rect();
+        if (
+            x === currentFrame.x &&
+            y === currentFrame.y &&
+            width === currentFrame.width &&
+            height === currentFrame.height
+        ) {
+            return;
+        } else if (width !== currentFrame.width || height !== currentFrame.height) {
+            this.resizing = true;
+        }
+        console.log('resize', this.window.get_id());
         // if (this.window.tilerLayoutState?.currentGrabOp) {
         //     return;
         // }
@@ -89,8 +103,20 @@ export class WindowNode extends BaseNode {
                 `Called resizeWindow x: ${x}, y: ${y}, width: ${width}, height: ${height}`,
             );
         }
-        this.window.move_resize_frame(false, x, y, width, height);
         this.rect = createRectangle(x, y, width, height);
+        this.window.move_resize_frame(false, x, y, width, height);
+    }
+
+    afterSizeChanged(): void {
+        this.resizing = false;
+    }
+
+    resetSizeAndPosition(): void {
+        console.log('resetSizeAndPosition', this.window.get_id());
+        if (this.window.get_maximized()) {
+            this.window.unmaximize(Meta.MaximizeFlags.BOTH);
+        }
+        this.resize(this.rect);
     }
 
     // removeFromTree(): void {

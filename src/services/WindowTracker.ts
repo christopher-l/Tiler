@@ -79,12 +79,13 @@ export class WindowTracker {
                 window.connect('focus', () =>
                     window.tilerLayoutState?.rootLayout?.onWindowFocus(window),
                 ),
-                // window.connect('position-changed', () =>
-                //     console.log('position-changed', window.get_id(), window.get_monitor()),
-                // ),
-                window.connect('size-changed', () =>
-                    window.tilerLayoutState?.rootLayout?.onWindowSizeChanged(window),
-                ),
+                window.connect('position-changed', () => {
+                    window.tilerLayoutState?.rootLayout?.onWindowPositionChanged(window);
+                }),
+                window.connect('size-changed', () => {
+                    window.tilerLayoutState?.rootLayout?.onWindowSizeChanged(window);
+                    window.tilerLayoutState?.node?.afterSizeChanged();
+                }),
             ],
             actorSignals: [windowActor.connect('destroy', () => this._untrackWindow(window))],
             updateNotifier,
