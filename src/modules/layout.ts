@@ -111,6 +111,15 @@ export class RootLayout {
         }
     }
 
+    onWindowSizeChanged(window: Window): void {
+        // Only handle size-changed events of the focused window since we change the sizes of other
+        // non-focused windows in the process.
+        if (!window.has_focus) {
+            return;
+        }
+        const grabOp = global.display.get_grab_op();
+    }
+
     private _updateNodes(): void {
         this._nodesToUpdate
             .filter(

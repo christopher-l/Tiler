@@ -66,6 +66,9 @@ export class WindowTracker {
                 // window.connect('position-changed', () =>
                 //     console.log('position-changed', window.get_id(), window.get_monitor()),
                 // ),
+                window.connect('size-changed', () =>
+                    window.tilerLayoutState?.rootLayout?.onWindowSizeChanged(window),
+                ),
             ],
             actorSignals: [windowActor.connect('destroy', () => this._untrackWindow(window))],
             updateNotifier,
