@@ -10,8 +10,9 @@ export const Gdk: any;
 export const GLib: any;
 
 export namespace Adw {
-    type PreferencesWindow = any;
     type PreferencesGroup = any;
+    type PreferencesPage = any;
+    type PreferencesWindow = any;
 }
 
 export namespace Clutter {

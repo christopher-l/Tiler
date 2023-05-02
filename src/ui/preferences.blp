@@ -1,0 +1,20 @@
+using Gtk 4.0;
+using Adw 1;
+
+Adw.PreferencesPage preferences {
+  title: "Page";
+  Adw.PreferencesGroup {
+    title: "Group";
+    Adw.ActionRow {
+      title: "Row";
+      Gtk.SpinButton {
+        valign: center;
+        adjustment: Gtk.Adjustment {
+          lower: 0;
+          upper: 100;
+          step-increment: 1;
+        };
+      }
+    }
+  }
+}
