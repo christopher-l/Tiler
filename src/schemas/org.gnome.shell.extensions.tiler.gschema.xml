@@ -13,14 +13,14 @@
                 <choice value="split-v"/>
                 <choice value="stacking"/>
             </choices>
-            <default>"split-v"</default>
+            <default>"stacking"</default>
         </key>
         <key name="default-window-state" type="s">
             <choices>
                 <choice value="floating"/>
                 <choice value="tiling"/>
             </choices>
-            <default>"tiling"</default>
+            <default>"floating"</default>
         </key>
     </schema>
 
