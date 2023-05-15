@@ -52,9 +52,10 @@ export class ScrollHandler {
             },
         );
         this._originalHandleWorkspaceScroll = WindowManager.prototype.handleWorkspaceScroll;
+        const self = this;
         WindowManager.prototype.handleWorkspaceScroll = function (event: Clutter.Event) {
             if (Main.overview.visible) {
-                return this._originalHandleWorkspaceScroll.apply(this, [event]);
+                return self._originalHandleWorkspaceScroll.apply(this, [event]);
             } else {
                 return Clutter.EVENT_PROPAGATE;
             }
