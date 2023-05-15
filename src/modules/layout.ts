@@ -223,13 +223,18 @@ export class RootLayout {
      * @returns `false` if the focus cannot be moved any further in the given direction within the
      * layout.
      */
-    focusDirection(window: Window, direction: Direction): boolean {
+    focusDirection(window: Window, direction: Direction, mode: 'only-stacking' | 'all'): boolean {
         if (window.tilerLayoutState!.state === 'floating') {
             return this._moveFloatingFocus(window, direction);
         }
         // Tiling
         let node = window.tilerLayoutState!.node!;
-        return this._focusDirection(node, direction);
+        switch (mode) {
+            case 'all':
+                return this._focusDirection(node, direction);
+            case 'only-stacking':
+                return this._focusDirectionStack(node, direction);
+        }
     }
 
     private _focusDirection(node: Node, direction: Direction): boolean {
@@ -240,6 +245,21 @@ export class RootLayout {
                 return true;
             }
             node = node.parent;
+        }
+        return false;
+    }
+
+    /**
+     * Like `_focusDirection`, but only has an effect if the current layout is a stack layout and
+     * only considers windows within the current stack layout.
+     */
+    _focusDirectionStack(node: Node, direction: Direction): boolean {
+        if (node.parent && node.parent.layout.type === 'stacking') {
+            const nodeToFocus = node.parent.layout.getChildByDirection(node, direction);
+            if (nodeToFocus) {
+                this._focus(nodeToFocus);
+                return true;
+            }
         }
         return false;
     }

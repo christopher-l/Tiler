@@ -2,6 +2,7 @@ import { LayoutManager } from 'services/LayoutManager';
 import { Settings } from 'services/Settings';
 import { KeyBindings } from 'services/KeyBindings';
 import { WindowTracker } from 'services/WindowTracker';
+import { ScrollHandler } from 'services/ScrollHandler';
 
 class Extension {
     enable() {
@@ -9,6 +10,7 @@ class Extension {
         LayoutManager.init();
         WindowTracker.init();
         KeyBindings.init();
+        ScrollHandler.init();
     }
 
     disable() {
@@ -16,6 +18,7 @@ class Extension {
         LayoutManager.destroy();
         WindowTracker.destroy();
         KeyBindings.destroy();
+        ScrollHandler.destroy();
     }
 }
 

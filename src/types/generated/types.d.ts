@@ -19,6 +19,8 @@ declare global {
 interface Global {
     log(msg: string): void;
     display: Meta.Display;
+    stage: Meta.Stage;
     workspace_manager: Meta.WorkspaceManager;
     get_current_time: () => number;
+    get_pointer: () => [number, number];
 }

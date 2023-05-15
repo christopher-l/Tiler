@@ -64,10 +64,10 @@ export class LayoutManager {
         }
     }
 
-    focusDirection(direction: Direction): void {
+    focusDirection(direction: Direction, mode: 'only-stacking' | 'all' = 'all'): void {
         const focusWindow: Window = global.display.focus_window;
         if (focusWindow) {
-            focusWindow.tilerLayoutState?.rootLayout?.focusDirection(focusWindow, direction);
+            focusWindow.tilerLayoutState?.rootLayout?.focusDirection(focusWindow, direction, mode);
         }        
     }
 
