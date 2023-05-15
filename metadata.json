@@ -3,8 +3,7 @@
   "description": "i3-inspired window tiling",
   "uuid": "tiler@luchrioh",
   "shell-version": [
-    "42",
-    "43"
+    "44"
   ],
   "settings-schema": "org.gnome.shell.extensions.tiler"
 }
