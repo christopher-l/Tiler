@@ -1,6 +1,7 @@
 import { Meta } from 'imports/gi';
 import { Direction } from 'modules/layout';
 import { GLib } from 'imports/gi';
+const Mainloop = imports.mainloop;
 
 const DIRECTION_MASK = 61440;
 
@@ -48,4 +49,10 @@ export function createRectangle(x: number, y: number, width: number, height: num
     rect.width = width;
     rect.height = height;
     return rect;
+}
+
+export function tick(timeout = 0): Promise<void> {
+    return new Promise((resolve) => {
+        Mainloop.timeout_add(timeout, resolve);
+    });
 }
