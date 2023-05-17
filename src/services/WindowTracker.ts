@@ -1,4 +1,3 @@
-import { GLib } from 'imports/gi';
 import { LayoutManager } from 'services/LayoutManager';
 import { Settings } from 'services/Settings';
 import { Window } from 'types/extended/window';
@@ -67,35 +66,35 @@ export class WindowTracker {
     }
 
     /** Called for all new windows and existing windows when the extension is enabled. */
-    private _trackWindow(window: Window): void {
+    private async _trackWindow(window: Window): Promise<void> {
         console.log('track window', window.get_id());
-        const updateNotifier = new DebouncingNotifier();
-        const windowActor = window.get_compositor_private();
-        window.tilerTracking = {
-            windowSignals: [
-                window.connect('workspace-changed', () => updateNotifier.notify()),
-                window.connect('notify::on-all-workspaces', () => updateNotifier.notify()),
-                window.connect('workspace-changed', () => updateNotifier.notify()),
-                window.connect('focus', () =>
-                    window.tilerLayoutState?.rootLayout?.onWindowFocus(window),
-                ),
-                window.connect('position-changed', () => {
-                    window.tilerLayoutState?.rootLayout?.onWindowPositionChanged(window);
-                }),
-                window.connect('size-changed', () => {
-                    window.tilerLayoutState?.rootLayout?.onWindowSizeChanged(window);
-                    window.tilerLayoutState?.node?.afterSizeChanged();
-                }),
-            ],
-            actorSignals: [windowActor.connect('destroy', () => this._untrackWindow(window))],
-            updateNotifier,
-        };
-        updateNotifier.subscribe(() => this._layoutManager.updateWindow(window));
-        // Initially update the window layout slightly delayed since (some?) windows are being
-        // positioned after being created.
-        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
+        // FIXME: possibly dangling signal if the extension is disabled while the window exists but
+        // has somehow not yet been shown.
+        const shownSignal = window.connect('shown', () => {
+            window.disconnect(shownSignal);
+            const updateNotifier = new DebouncingNotifier();
+            const windowActor = window.get_compositor_private();
+            window.tilerTracking = {
+                windowSignals: [
+                    window.connect('workspace-changed', () => updateNotifier.notify()),
+                    window.connect('notify::on-all-workspaces', () => updateNotifier.notify()),
+                    window.connect('workspace-changed', () => updateNotifier.notify()),
+                    window.connect('focus', () =>
+                        window.tilerLayoutState?.rootLayout?.onWindowFocus(window),
+                    ),
+                    window.connect('position-changed', () => {
+                        window.tilerLayoutState?.rootLayout?.onWindowPositionChanged(window);
+                    }),
+                    window.connect('size-changed', () => {
+                        window.tilerLayoutState?.rootLayout?.onWindowSizeChanged(window);
+                        window.tilerLayoutState?.node?.afterSizeChanged();
+                    }),
+                ],
+                actorSignals: [windowActor.connect('destroy', () => this._untrackWindow(window))],
+                updateNotifier,
+            };
+            updateNotifier.subscribe(() => this._layoutManager.updateWindow(window));
             updateNotifier.notify();
-            return GLib.SOURCE_REMOVE;
         });
     }
 
