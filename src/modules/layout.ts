@@ -466,13 +466,19 @@ export class RootLayout {
     private _getTargetState(window: Window): WindowState {
         if (window.tilerLayoutState?.state) {
             return window.tilerLayoutState.state;
-        } else {
+        } else if (this._shouldAutoTileWindow(window)) {
             return this.config.defaultWindowState;
+        } else {
+            return 'floating';
         }
     }
 
     private _isRoot(node: Node): boolean {
         return this.tiling === node;
+    }
+
+    private _shouldAutoTileWindow(window: Window): boolean {
+        return window.window_type === Meta.WindowType.NORMAL && !window.skip_taskbar;
     }
 }
 
