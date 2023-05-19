@@ -21,7 +21,7 @@ export interface LayoutConfig {
 }
 
 export class RootLayout {
-    // floating: Window[] = [];
+    floating: Window[] = [];
     tiling: LayoutNode;
     private _nodesToUpdate: LayoutNode[] = [];
     private _updateNotifier = new DebouncingNotifier();
@@ -76,7 +76,7 @@ export class RootLayout {
             this._removeTilingWindow(window);
         }
         window.tilerLayoutState!.state = 'floating';
-        // this.floating.push(window);
+        this.floating.push(window);
         if (window.tilerLayoutState!.restoreRect) {
             const rect = window.tilerLayoutState!.restoreRect;
             window.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
@@ -93,6 +93,9 @@ export class RootLayout {
         // windowActor.remove_all_transitions();
         if (!window.allows_resize()) {
             return false;
+        }
+        if (window.tilerLayoutState?.state === 'floating') {
+            this._removeFloatingWindow(window);
         }
         window.tilerLayoutState!.state = 'tiling';
         window.tilerLayoutState!.restoreRect = window.get_frame_rect();
@@ -391,15 +394,24 @@ export class RootLayout {
     }
 
     private _moveFloatingFocus(window: Window, direction: Direction): boolean {
-        // TODO
-        return false;
+        const index = this.floating.indexOf(window);
+        const d = ['left', 'up'].includes(direction) ? -1 : 1;
+        const targetIndex = index + d;
+        if (targetIndex >= 0 && targetIndex < this.floating.length) {
+            this.floating[targetIndex].make_above();
+            this.floating[targetIndex].focus(global.get_current_time());
+            this.floating[targetIndex].raise();
+            return true;
+        } else {
+            return false;
+        }
     }
 
     private _removeFloatingWindow(window: Window): void {
-        // const index = this.floating.indexOf(window);
-        // if (index >= 0) {
-        //     this.floating.splice(index, 1);
-        // }
+        const index = this.floating.indexOf(window);
+        if (index >= 0) {
+            this.floating.splice(index, 1);
+        }
     }
 
     private _removeTilingWindow(window: Window): void {
