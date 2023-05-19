@@ -35,7 +35,7 @@ export class RootLayout {
                 this.config.gapSize,
             ),
         );
-        this.tiling.layout.updatePositionAndSize();
+        this.tiling.layout.updatePositionAndSize({ isRootLayout: true });
         this._updateNotifier.subscribe(() => this._updateNodes());
     }
 
@@ -90,14 +90,11 @@ export class RootLayout {
     }
 
     tileWindow(window: Window): boolean {
-        if (window.get_maximized()) {
-            window.unmaximize(Meta.MaximizeFlags.BOTH);
-        }
         // const windowActor = window.get_compositor_private() as Clutter.Actor;
         // windowActor.remove_all_transitions();
-        if (!window.allows_resize()) {
-            return false;
-        }
+        // if (!window.allows_resize()) {
+        //     return false;
+        // }
         if (window.tilerLayoutState?.state === 'floating') {
             this._removeFloatingWindow(window);
         }
@@ -155,7 +152,8 @@ export class RootLayout {
     private _handleResize(windowNode: WindowNode, direction: Direction): void {
         const orientation = getOrientation(direction);
         const dimension = orientation === 'horizontal' ? 'width' : 'height';
-        const delta = windowNode.window.get_frame_rect()[dimension] - windowNode.rect[dimension];
+        const delta =
+            windowNode.window.get_frame_rect()[dimension] - windowNode.targetPosition[dimension];
         const splitAncestor: LayoutNode<SplitLayout> | undefined = windowNode.findAncestor(
             (node): node is LayoutNode<SplitLayout> =>
                 isSplitLayout(node.layout) &&
@@ -181,7 +179,7 @@ export class RootLayout {
                 // automatically by updating their ancestor.
                 (node) => !this._nodesToUpdate.some((otherNode) => node.isDescendentOf(otherNode)),
             )
-            .forEach((node) => node.layout.updatePositionAndSize());
+            .forEach((node) => node.layout.updatePositionAndSize({ isRootLayout: !node.parent }));
         this._nodesToUpdate = [];
     }
 
@@ -647,7 +645,7 @@ class SplitLayout extends BaseLayout {
         this._normalizeSizes();
     }
 
-    updatePositionAndSize(): void {
+    updatePositionAndSize({ isRootLayout }: { isRootLayout: boolean }): void {
         let offset = 0;
         const usableTiledSize = this._getUsableTiledSize();
         this.children.forEach((child) => {
@@ -658,10 +656,16 @@ class SplitLayout extends BaseLayout {
             const width = this.type === 'split-h' ? tiledSize : this.rect.width;
             const height = this.type === 'split-v' ? tiledSize : this.rect.height;
             if (child.node.kind === 'window') {
-                child.node.resize({ x, y, width, height });
+                child.node.resize({
+                    x,
+                    y,
+                    width,
+                    height,
+                    maximized: isRootLayout && this.children.length === 1,
+                });
             } else {
                 child.node.layout.rect = createRectangle(x, y, width, height);
-                child.node.layout.updatePositionAndSize();
+                child.node.layout.updatePositionAndSize({ isRootLayout: false });
             }
             offset = tileStart + tiledSize + this.gapSize;
         });
@@ -743,13 +747,19 @@ class StackingLayout extends BaseLayout {
         this.children.splice(index, 1);
     }
 
-    updatePositionAndSize(): void {
+    updatePositionAndSize({ isRootLayout }: { isRootLayout: boolean }): void {
         const rect = this.rect;
         const STACKING_OFFSET = 10;
         const height = rect.height - (this.children.length - 1) * STACKING_OFFSET;
         this.children.forEach((child, index) => {
             const y = rect.y + index * STACKING_OFFSET;
-            child.node.resize({ x: rect.x, y, width: rect.width, height });
+            child.node.resize({
+                x: rect.x,
+                y,
+                width: rect.width,
+                height,
+                maximized: isRootLayout && this.children.length === 1,
+            });
         });
     }
 

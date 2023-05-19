@@ -1,7 +1,6 @@
 import { Meta } from 'imports/gi';
 import { TilingLayout } from 'modules/layout';
 import { Window } from 'types/extended/window';
-import { createRectangle } from 'utils/utils';
 
 let nextNodeId = 0;
 
@@ -66,15 +65,30 @@ export class LayoutNode<T extends TilingLayout = TilingLayout> extends BaseNode 
     }
 }
 
+interface TargetPosition {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    maximized: boolean;
+}
+
 export class WindowNode extends BaseNode {
     readonly kind = 'window';
-    rect: Meta.Rectangle;
+    targetPosition: TargetPosition;
     /** Whether the window is currently being resized by us. */
     resizing = false;
 
     constructor(public parent: LayoutNode, public window: Window) {
         super();
-        this.rect = window.get_frame_rect();
+        const { x, y, width, height } = window.get_frame_rect();
+        this.targetPosition = {
+            x,
+            y,
+            width,
+            height,
+            maximized: !!window.get_maximized(),
+        };
     }
 
     debug(level = 0): void {
@@ -82,13 +96,15 @@ export class WindowNode extends BaseNode {
         console.log(indent + `Node ${this.kind} ${this.window.get_id()}`);
     }
 
-    resize({ x, y, width, height }: { x: number; y: number; width: number; height: number }): void {
+    async resize(targetPosition: TargetPosition): Promise<void> {
+        const { x, y, width, height, maximized } = targetPosition;
         const currentFrame = this.window.get_frame_rect();
         if (
             x === currentFrame.x &&
             y === currentFrame.y &&
             width === currentFrame.width &&
-            height === currentFrame.height
+            height === currentFrame.height &&
+            maximized === !!this.window.get_maximized()
         ) {
             return;
         } else if (width !== currentFrame.width || height !== currentFrame.height) {
@@ -103,8 +119,17 @@ export class WindowNode extends BaseNode {
                 `Called resizeWindow x: ${x}, y: ${y}, width: ${width}, height: ${height}`,
             );
         }
-        this.rect = createRectangle(x, y, width, height);
-        this.window.move_resize_frame(false, x, y, width, height);
+        this.targetPosition = targetPosition;
+        if (maximized) {
+            if (this.window.get_maximized() !== Meta.MaximizeFlags.BOTH) {
+                this.window.maximize(Meta.MaximizeFlags.BOTH);
+            }
+        } else {
+            if (this.window.get_maximized()) {
+                this.window.unmaximize(Meta.MaximizeFlags.BOTH);
+            }
+            this.window.move_resize_frame(false, x, y, width, height);
+        }
     }
 
     afterSizeChanged(): void {
@@ -113,10 +138,7 @@ export class WindowNode extends BaseNode {
 
     resetSizeAndPosition(): void {
         console.log('resetSizeAndPosition', this.window.get_id());
-        if (this.window.get_maximized()) {
-            this.window.unmaximize(Meta.MaximizeFlags.BOTH);
-        }
-        this.resize(this.rect);
+        this.resize(this.targetPosition);
     }
 
     // removeFromTree(): void {
