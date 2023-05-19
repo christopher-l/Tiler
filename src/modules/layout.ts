@@ -478,7 +478,11 @@ export class RootLayout {
     }
 
     private _shouldAutoTileWindow(window: Window): boolean {
-        return window.window_type === Meta.WindowType.NORMAL && !window.skip_taskbar;
+        return (
+            window.window_type === Meta.WindowType.NORMAL &&
+            !window.skip_taskbar &&
+            !window.get_transient_for()
+        );
     }
 }
 
