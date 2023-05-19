@@ -43,7 +43,10 @@ export class WindowTracker {
     private _bindSignals(): void {
         const display = global.display;
         this._displaySignals = [
-            display.connect('window-created', (_, window) => this._trackWindow(window)),
+            display.connect('window-created', (_, window) => {
+                console.log('window-created', window.get_id());
+                this._trackWindow(window);
+            }),
             display.connect('window-entered-monitor', (_, monitor, window: Window) =>
                 window.tilerTracking?.updateNotifier.notify(),
             ),
@@ -90,7 +93,12 @@ export class WindowTracker {
                         window.tilerLayoutState?.node?.afterSizeChanged();
                     }),
                 ],
-                actorSignals: [windowActor.connect('destroy', () => this._untrackWindow(window))],
+                actorSignals: [
+                    windowActor.connect('destroy', () => {
+                        console.log('destroy', window.get_id());
+                        this._untrackWindow(window);
+                    }),
+                ],
                 updateNotifier,
             };
             updateNotifier.subscribe(() => this._layoutManager.updateWindow(window));

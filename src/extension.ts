@@ -6,6 +6,7 @@ import { ScrollHandler } from 'services/ScrollHandler';
 
 class Extension {
     enable() {
+        console.log('init');
         Settings.init();
         LayoutManager.init();
         WindowTracker.init();
@@ -14,6 +15,7 @@ class Extension {
     }
 
     disable() {
+        console.log('destroy');
         Settings.destroy();
         LayoutManager.destroy();
         WindowTracker.destroy();
