@@ -1,11 +1,10 @@
-import { Clutter, Shell, Meta } from 'imports/gi';
+import { Clutter, Shell } from 'imports/gi';
 import { LayoutManager } from 'services/LayoutManager';
+import { Window } from 'types/extended/window';
 const Main = imports.ui.main;
 const wm = imports.ui.windowManager;
 const WindowManager = wm.WindowManager;
 const AltTab = imports.ui.altTab;
-
-type Window = Meta.Window;
 
 export class ScrollHandler {
     private static _instance: ScrollHandler | null;
@@ -80,11 +79,11 @@ export class ScrollHandler {
         }
         switch (direction) {
             case Clutter.ScrollDirection.UP:
-                this._focusWindowUnderCursor();
+                this._focusTilingWindowUnderCursor();
                 this._layoutManager.focusDirection('up', 'only-stacking');
                 return Clutter.EVENT_STOP;
             case Clutter.ScrollDirection.DOWN:
-                this._focusWindowUnderCursor();
+                this._focusTilingWindowUnderCursor();
                 this._layoutManager.focusDirection('down', 'only-stacking');
                 return Clutter.EVENT_STOP;
             default:
@@ -92,10 +91,17 @@ export class ScrollHandler {
         }
     }
 
-    private _focusWindowUnderCursor() {
-        const focusWindow = global.display.get_focus_window();
+    /**
+     * Focuses the window under the mouse cursor if it is a tiling window.
+     */
+    private _focusTilingWindowUnderCursor() {
+        const focusWindow: Window = global.display.get_focus_window() as Window;
         if (!this._isWindowUnderCursor(focusWindow)) {
-            this._getWindowUnderCursor()?.focus(global.get_current_time());
+            const windowUnderCursor = this._getWindowUnderCursor();
+            if (windowUnderCursor?.tilerLayoutState?.state === 'tiling') {
+                windowUnderCursor.focus(global.get_current_time());
+                windowUnderCursor.raise();
+            }
         }
     }
 
