@@ -40,6 +40,7 @@ export class LayoutManager {
     }
 
     toggleFloating(window: Window = global.display.get_focus_window()): void {
+        window = this._getRootWindow(window);
         const currentState = window.tilerLayoutState!.state;
         const rootLayout = window.tilerLayoutState!.rootLayout!;
         switch (currentState) {
@@ -65,14 +66,14 @@ export class LayoutManager {
     }
 
     focusDirection(direction: Direction, mode: 'only-stacking' | 'all' = 'all'): void {
-        const focusWindow: Window = global.display.focus_window;
+        const focusWindow: Window = this._getRootWindow(global.display.focus_window);
         if (focusWindow) {
             focusWindow.tilerLayoutState?.rootLayout?.focusDirection(focusWindow, direction, mode);
-        }        
+        }
     }
 
     moveFocusedWindow(direction: Direction): void {
-        const focusWindow: Window = global.display.focus_window;
+        const focusWindow: Window = this._getRootWindow(global.display.focus_window);
         if (focusWindow) {
             focusWindow.tilerLayoutState?.rootLayout?.moveWindow(focusWindow, direction);
         }
@@ -109,5 +110,19 @@ export class LayoutManager {
                 .get_active_workspace()
                 .get_work_area_for_monitor(monitor),
         };
+    }
+
+    /**
+     * In case `window` is transient for another window, returns to top-most window of the chain.
+     */
+    private _getRootWindow(window: Window): Window {
+        while (true) {
+            const parent = window.get_transient_for();
+            if (parent) {
+                window = parent;
+            } else {
+                return window;
+            }
+        }
     }
 }
