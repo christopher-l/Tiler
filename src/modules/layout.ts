@@ -45,6 +45,10 @@ export class RootLayout {
     insertWindow(window: Window): void {
         window.tilerLayoutState ??= {};
         window.tilerLayoutState.rootLayout = this;
+        if (window.get_transient_for()) {
+            // Don't handle the layout for transient windows.
+            return;
+        }
         const targetState = this._getTargetState(window);
         switch (targetState) {
             case 'floating':
