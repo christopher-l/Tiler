@@ -36,6 +36,15 @@ function fixupJavaScript() (
 	done
 )
 
+function compileUi() (
+	mkdir target/ui
+	cd src/ui
+	for f in *.blp; do
+		echo $f
+		blueprint-compiler compile $f >../../target/ui/$(basename $f .blp).ui
+	done
+)
+
 function compileSchemas() (
 	cp -r src/schemas target/schemas
 	glib-compile-schemas src/schemas --targetdir target/schemas
@@ -72,6 +81,7 @@ function main() (
 	clear
 	compile
 	fixupJavaScript
+	compileUi
 	compileSchemas
 	copyAdditionalFiles
 	pack
