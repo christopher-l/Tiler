@@ -223,6 +223,9 @@ export class RootLayout {
         newNode.insertWindow(nodeWindow);
         newNode.insertWindow(window);
         node.parent.layout.children[index].node = newNode;
+        if (node.parent === this.tiling) {
+            this._removeSingleChildLayout(node.parent);
+        }
         this._markForUpdate(newNode);
     }
 
@@ -346,14 +349,16 @@ export class RootLayout {
         direction: Direction,
     ): boolean {
         console.log('try _insertIntoSiblingByDirection');
-        const child = node.parent?.layout.getChildByDirection(node, direction);
+        const parent = node.parent;
+        const child = parent?.layout.getChildByDirection(node, direction);
         if (
             child &&
-            (node.parent!.layout.type !== this.config.defaultLayout || child.kind === 'layout')
+            (parent!.layout.type !== this.config.defaultLayout || child.kind === 'layout')
         ) {
             console.log('do _insertIntoSiblingByDirection', windowNode.window.get_id(), direction);
             this._removeTilingWindow(windowNode.window);
             this._insertUnderNode(windowNode.window, child);
+            this._removeSingleChildLayout(parent!);
             this.tiling.debug();
             return true;
         } else {
