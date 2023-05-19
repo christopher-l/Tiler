@@ -82,6 +82,7 @@ export class RootLayout {
             window.move_resize_frame(false, rect.x, rect.y, rect.width, rect.height);
             window.tilerLayoutState!.restoreRect = null;
         }
+        window.make_above();
     }
 
     tileWindow(window: Window): boolean {
@@ -96,6 +97,7 @@ export class RootLayout {
         window.tilerLayoutState!.state = 'tiling';
         window.tilerLayoutState!.restoreRect = window.get_frame_rect();
         this._insertUnderNode(window);
+        window.unmake_above();
         return true;
     }
 

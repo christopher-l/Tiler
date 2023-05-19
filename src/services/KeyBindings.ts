@@ -56,6 +56,7 @@ export class KeyBindings {
     }
 
     private _addExtensionKeyBindings() {
+        this.addKeyBinding('focus-floating', () => this._layoutManager.toggleFloatingFocus());
         this.addKeyBinding('toggle-floating', () => this._layoutManager.toggleFloating());
         this.addKeyBinding('focus-left', () => this._layoutManager.focusDirection('left'));
         this.addKeyBinding('focus-right', () => this._layoutManager.focusDirection('right'));
