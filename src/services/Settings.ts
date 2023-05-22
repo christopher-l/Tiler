@@ -120,7 +120,7 @@ class ExtensionPage<P extends PageName> {
     }
 }
 
-export class SettingsSubject<T> {
+class SettingsSubject<T> {
     private static _subjects: SettingsSubject<any>[] = [];
     static createBooleanSubject(settings: Gio.Settings, name: string): SettingsSubject<boolean> {
         return new SettingsSubject<boolean>(settings, name, {
