@@ -41,6 +41,7 @@ export namespace Meta {
 }
 
 export namespace Gtk {
+    type Builder = any;
     type EventControllerKey = any;
     type ShortcutManager = any;
     type ShortcutController = any;

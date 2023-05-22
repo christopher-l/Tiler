@@ -1,0 +1,63 @@
+interface PreferenceDefinitionBase {
+    // id: string;
+}
+
+interface ComboRowDefinition<K extends string> extends PreferenceDefinitionBase {
+    widgetType: 'Adw.ComboRow';
+    values: readonly K[];
+}
+
+// type PreferenceDefinition = ComboRowDefinition<string>;
+// type SomePreferenceDefinition<K extends string> = { [key in K]: PreferenceDefinition }[K];
+// type PageDefinition<K extends string> = Record<K, SomePreferenceDefinition<K>>;
+
+// type Page = { [key: string]: PreferenceDefinition };
+
+// type PagesStructure = Record<string, unknown>;
+// type Pages<P extends PagesStructure> = { [K in keyof P]: Page };
+
+const preferenceDefinitions = {
+    behavior: {
+        'default-layout': {
+            // id: 'default-layout',
+            widgetType: 'Adw.ComboRow',
+            values: ['split-h', 'split-v', 'stacking'],
+        },
+        foo: {
+            // id: 'foo',
+            widgetType: 'Adw.ComboRow',
+            values: ['foo'],
+        },
+    },
+    appearance: {
+        bar: {
+            // id: 'bar',
+            widgetType: 'Adw.ComboRow',
+            values: ['bar'],
+        },
+    },
+} as const;
+
+function f<P extends PagesStructure>(page: Pages<P>) {}
+
+f({
+    behavior: {
+        'default-layout': {
+            // id: 'default-layout',
+            widgetType: 'Adw.ComboRow',
+            values: ['split-h', 'split-v', 'stacking'],
+        },
+        foo: {
+            // id: 'foo',
+            widgetType: 'Adw.ComboRow',
+            values: ['foo'],
+        },
+    },
+    appearance: {
+        bar: {
+            // id: 'bar',
+            widgetType: 'Adw.ComboRow',
+            values: ['bar'],
+        },
+    },
+});
