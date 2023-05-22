@@ -2,6 +2,18 @@ const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 import { Gio } from 'imports/gi';
 import { TilingType, WindowState } from 'modules/layout';
+import {
+    ComboRowDefinition,
+    PageName,
+    PreferenceDefinition,
+    PropertyDefinition,
+    PropertyKey,
+    preferenceDefinitions,
+} from 'preferences/preferenceDefinitions';
+
+type PreferenceSubject<P> = P extends ComboRowDefinition<infer T>
+    ? SettingsSubject<T>
+    : SettingsSubject<boolean>;
 
 export class Settings {
     private static _instance: Settings | null;
@@ -16,6 +28,20 @@ export class Settings {
     static getInstance(): Settings {
         return Settings._instance as Settings;
     }
+
+    private _extensionPages: { [pageName in PageName]?: ExtensionPage<PageName> } = {};
+
+    extensionPreference<P extends PageName, K extends PropertyKey<P>>(
+        pageName: P,
+        propertyKey: K,
+    ): PreferenceSubject<PropertyDefinition<P, K>> {
+        if (!this._extensionPages[pageName]) {
+            this._extensionPages[pageName] = new ExtensionPage(pageName);
+        }
+        const extensionPage = this._extensionPages[pageName] as ExtensionPage<P>;
+        return extensionPage.getSubject(propertyKey);
+    }
+
     readonly mutterSettings = new Gio.Settings({ schema: 'org.gnome.mutter' });
 
     readonly dynamicWorkspaces = SettingsSubject.createBooleanSubject(
@@ -55,7 +81,46 @@ export class Settings {
     }
 }
 
-class SettingsSubject<T> {
+class ExtensionPage<P extends PageName> {
+    private readonly _settings = ExtensionUtils.getSettings(
+        `${Me.metadata['settings-schema']}.${this._pageName}`,
+    );
+    private readonly _pageDefinition: Record<string, PreferenceDefinition> =
+        preferenceDefinitions[this._pageName];
+    private _propertySubjects: {
+        [key in PropertyKey<P>]?: PreferenceSubject<PropertyDefinition<P, key>>;
+    } = {};
+
+    constructor(private readonly _pageName: P) {}
+
+    getSubject<K extends PropertyKey<P>>(key: K): PreferenceSubject<PropertyDefinition<P, K>> {
+        if (!this._propertySubjects[key]) {
+            this._propertySubjects[key] = this._getSubject(
+                this._pageDefinition[key as string],
+            ) as PreferenceSubject<PropertyDefinition<P, K>>;
+        }
+        return this._propertySubjects[key]!;
+    }
+
+    private _getSubject<P extends PreferenceDefinition>(
+        propertyDefinition: P,
+    ): PreferenceSubject<P> {
+        switch (propertyDefinition.widgetType) {
+            case 'Adw.ComboRow':
+                return SettingsSubject.createStringSubject(
+                    this._settings,
+                    this._pageName,
+                ) as PreferenceSubject<P>;
+            case 'Boolean':
+                return SettingsSubject.createBooleanSubject(
+                    this._settings,
+                    this._pageName,
+                ) as PreferenceSubject<P>;
+        }
+    }
+}
+
+export class SettingsSubject<T> {
     private static _subjects: SettingsSubject<any>[] = [];
     static createBooleanSubject(settings: Gio.Settings, name: string): SettingsSubject<boolean> {
         return new SettingsSubject<boolean>(settings, name, {

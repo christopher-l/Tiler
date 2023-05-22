@@ -42,7 +42,12 @@ export function timeout(action: () => void, delayMs = 0): void {
     });
 }
 
-export function createRectangle(x: number, y: number, width: number, height: number): Meta.Rectangle {
+export function createRectangle(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+): Meta.Rectangle {
     const rect = new Meta.Rectangle();
     rect.x = x;
     rect.y = y;
