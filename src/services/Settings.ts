@@ -2,6 +2,16 @@ const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 import { Gio } from 'imports/gi';
 import { TilingType, WindowState } from 'modules/layout';
+import {
+    ComboRowDefinition,
+    PageName,
+    preferenceDefinitions,
+    PreferenceDefinitions,
+    PageDefinition,
+    PropertyDefinition,
+    PropertyKey,
+} from 'preferences/preferenceDefinitions';
+import { getHelpers, mapObject } from 'utils/utils';
 
 export class Settings {
     private static _instance: Settings | null;
@@ -16,6 +26,39 @@ export class Settings {
     static getInstance(): Settings {
         return Settings._instance as Settings;
     }
+
+    // extensionPreferences = ;
+
+    private _mapExtensionPreferences() {
+        // Object.entries(preferenceDefinitions).map(([_pageName, _pageDefinitions]) => {
+        //     const pageName = _pageName as keyof typeof preferenceDefinitions;
+        //     const pageDefinitions = _pageDefinitions as typeof preferenceDefinitions[typeof pageName];
+        //     const extensionPage = new ExtensionPage(pageName)
+        //     return Object.entries(pageDefinitions).map()
+        // })
+
+        const pageName = 'behavior';
+        const pageDefinitions = preferenceDefinitions['behavior'];
+        const extensionPage = new ExtensionPage(pageName);
+        // const pagePreferences = mapObject(pageDefinitions)((key, definition) =>
+        //     extensionPage.mapDefinition(key, definition),
+        // );
+        // pagePreferences['default-layout'].value === 'foo'
+    }
+
+    private _getPreference<K extends keyof (typeof preferenceDefinitions)['behavior']>(key: K) {
+        const pageName = 'behavior';
+        const pageDefinitions = preferenceDefinitions['behavior'];
+        const extensionPage = new ExtensionPage(pageName);
+        const bar = getHelpers();
+        // return extensionPage.mapDefinition(key, pageDefinitions[key]);
+    }
+
+    private foo() {
+        // const bar = this._getPreference<'default-layout'>('default-layout');
+        // bar.value === 'foo';
+    }
+
     readonly mutterSettings = new Gio.Settings({ schema: 'org.gnome.mutter' });
 
     readonly dynamicWorkspaces = SettingsSubject.createBooleanSubject(
@@ -55,7 +98,36 @@ export class Settings {
     }
 }
 
-class SettingsSubject<T> {
+class ExtensionPage<P extends PageName> {
+    readonly _settings = ExtensionUtils.getSettings(
+        `${Me.metadata['settings-schema']}.${this._id}`,
+    );
+    readonly _pageDefinition: PageDefinition<P> = preferenceDefinitions[this._id];
+
+    constructor(private readonly _id: P) {}
+
+    // mapDefinition<K extends string>(
+    //     id: string,
+    //     definition: ComboRowDefinition<K>,
+    // ): SettingsSubject<K>;
+    // mapDefinition<T extends PreferenceDefinition>(id: string, definition: T) {
+    //     switch (definition.widgetType) {
+    //         case 'Adw.ComboRow':
+    //             return SettingsSubject.createStringSubject(this._settings, id);
+    //     }
+    // }
+
+    getSubject<K extends PropertyKey<P>>(key: K) {
+        const propertyDefinition: PropertyDefinition<P, K> = this._pageDefinition[key];
+        const widgetType = propertyDefinition.widgetType;
+        // switch (propertyDefinition.widgetType) {
+        //     case 'Adw.ComboRow':
+        //         return SettingsSubject.createStringSubject(this._settings, id);
+        // }
+    }
+}
+
+export class SettingsSubject<T> {
     private static _subjects: SettingsSubject<any>[] = [];
     static createBooleanSubject(settings: Gio.Settings, name: string): SettingsSubject<boolean> {
         return new SettingsSubject<boolean>(settings, name, {
