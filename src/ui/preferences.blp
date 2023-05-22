@@ -1,12 +1,32 @@
 using Gtk 4.0;
+using Gio 2.0;
 using Adw 1;
 
-Adw.PreferencesPage preferences {
-  title: "Page";
+Adw.PreferencesPage behavior {
+  title: "Behavior";
+  icon-name: "preferences-system-symbolic";
   Adw.PreferencesGroup {
-    title: "Group";
+    // title: "Group";
+    Adw.ComboRow default-layout {
+      title: "Default layout";
+      model: StringList {
+        strings [
+          "Split horizontally",
+          "Split vertically",
+          "Stacking",
+        ]
+      };
+    }
+  }
+}
+
+Adw.PreferencesPage appearance {
+  title: "Appearance";
+  icon-name: "applications-graphics-symbolic";
+  Adw.PreferencesGroup {
+    // title: "Group";
     Adw.ActionRow {
-      title: "Row";
+      title: "Gap size";
       Gtk.SpinButton {
         valign: center;
         adjustment: Gtk.Adjustment {
